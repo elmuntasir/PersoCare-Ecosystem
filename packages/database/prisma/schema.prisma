@@ -1,0 +1,298 @@
+// packages/database/prisma/schema.prisma
+//
+// Design notes (see docs/present/architecture/multi-tenancy.md and
+// docs/present/adr/ for the reasoning behind these choices):
+//
+// - `role` and `organizationType` are plain, indexed strings, validated
+//   at the application layer by Zod enums in packages/core, NOT Postgres
+//   enums. Adding a new role or org type later is a code change, not a
+//   migration. This is the deliberate mechanism behind "scalable for
+//   future roles."
+// - Every tenant-owned record carries `organizationId` directly (not
+//   just reachable through a join), so every query can be scoped with
+//   a single `WHERE organizationId = ?` — this is the pattern the
+//   multi-tenancy doc flags as deserving disproportionate testing care.
+// - cuid() ids throughout: sortable-ish, collision-safe, no reliance on
+//   sequential integers that leak record counts across tenants.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity
+// ─────────────────────────────────────────────────────────────
+
+/// One row per real person, globally. Role lives on Membership, not here —
+/// a person's relationship to an organization is what has a role, not
+/// the person themselves.
+model User {
+  id        String   @id @default(cuid())
+  authId    String   @unique // Supabase Auth user id — this table mirrors auth, doesn't replace it
+  email     String   @unique
+  fullName  String
+  phone     String?
+  avatarUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       Membership[]
+  patientProfile    PatientProfile?
+  doctorProfile     DoctorProfile?
+  reviewsWritten    Review[]         @relation("ReviewAuthor")
+  reviewsReceived   Review[]         @relation("ReviewSubject")
+  healthDiaryEntries HealthDiaryEntry[]
+
+  @@index([email])
+}
+
+/// A tenant. `type` is a validated string (see packages/core/zod), not a
+/// Postgres enum — new organization types don't require a migration.
+model Organization {
+  id     String @id @default(cuid())
+  name   String
+  type   String // "hospital" | "clinic" | "diagnostic_center" | "laboratory" | "pharmacy" | "telemedicine" | ... (extensible)
+  slug   String @unique
+
+  verificationStatus String   @default("pending") // "pending" | "verified" | "rejected" — see ADR-0004
+  verifiedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships     Membership[]
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  reviews         Review[]
+  aiConfiguration AIConfiguration?
+  subscription    Subscription?
+
+  @@index([type])
+}
+
+/// The join table where role actually lives. One user can have many
+/// memberships across different organizations, each with its own role
+/// and status — this is what makes multi-org, multi-role people work.
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String   // "doctor" | "patient" | "staff" | "admin" | ... (extensible — validated in packages/core)
+  status         String   @default("active") // "active" | "invited" | "suspended"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, role]) // same person can hold >1 role at the same org, but not duplicate the same role twice
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Profiles (fields carried over from the old PersoCare project)
+// ─────────────────────────────────────────────────────────────
+
+/// Baseline medical/demographic info about a person — not tied to any
+/// one organization, since a patient's blood type doesn't belong to a
+/// hospital, it belongs to them.
+model PatientProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dateOfBirth         DateTime?
+  bloodType           String?
+  allergies           String?
+  currentMedications  String?
+  pastDiseases        String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  smokingStatus       String?
+  alcoholConsumption  String?
+  exerciseFrequency   String?
+  dietaryRestrictions String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments  Appointment[]
+  prescriptions Prescription[]
+}
+
+/// Professional info specific to doctors — kept separate from PatientProfile
+/// since a person's doctor identity and patient identity are different
+/// shapes of data (this is exactly the flexibility Membership enables).
+model DoctorProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationNumber   String? // e.g. BMDC number — see ADR-0004
+  registrationVerified Boolean @default(false)
+  specialty            String?
+  bio                  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments  Appointment[]
+  prescriptions Prescription[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Clinical / operational records — every one of these carries
+// organizationId directly for tenant scoping.
+// ─────────────────────────────────────────────────────────────
+
+model Appointment {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String
+  doctor   DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  scheduledAt DateTime
+  status      String   @default("scheduled") // "scheduled" | "completed" | "cancelled" | "no_show"
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescriptions Prescription[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model Prescription {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  patientId String
+  patient   PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String
+  doctor   DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items PrescriptionItem[]
+
+  @@index([organizationId])
+  @@index([patientId])
+}
+
+model PrescriptionItem {
+  id             String @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  medicineName String
+  dosage       String?
+  frequency    String?
+  durationDays Int?
+  instructions String?
+
+  @@index([prescriptionId])
+}
+
+/// Trust layer — reviews are treated as infrastructure, not a bolt-on
+/// feature, per the vision doc. `verified` exists so a review can be
+/// tied to an actual completed appointment, not just a claim.
+model Review {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  subjectId String // the doctor or org being reviewed
+  subject   User @relation("ReviewSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+
+  rating   Int    // 1-5, validated in packages/core
+  comment  String?
+  verified Boolean @default(false) // tied to a real completed appointment, not just a claim
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([subjectId])
+}
+
+model HealthDiaryEntry {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bloodPressure String?
+  heartRate     Int?
+  painLevel     Int?
+  mood          String?
+  sleepHours    Float?
+  appetite      String?
+  notes         String?
+
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI + billing — per docs/present/architecture/ai-strategy.md and
+// billing-philosophy.md
+// ─────────────────────────────────────────────────────────────
+
+/// One row per organization. Supports all three AI deployment models
+/// (BYOK, marketplace agents, org AI) without needing separate schemas
+/// for each — `provider`/`installedAgents` distinguish them.
+model AIConfiguration {
+  id             String @id @default(cuid())
+  organizationId String @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  mode              String  @default("marketplace") // "byok" | "marketplace" | "organization_ai"
+  byokProvider      String? // "openai" | "anthropic" | "google" | "grok" | "openrouter" | ...
+  byokKeyCiphertext String? // never store plaintext — encrypted at the application layer before this is written
+  installedAgents   String[] // agent identifiers from the marketplace
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id             String @id @default(cuid())
+  organizationId String @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  plan   String // "starter" | "growth" | "professional" | "enterprise" (extensible)
+  status String @default("active") // "active" | "past_due" | "cancelled"
+
+  currentPeriodEnd DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
