@@ -66,7 +66,7 @@ export type OrganizationShowcaseData = {
   reviewCount: number;
   reviews: OrgReviewItem[];
   doctors: OrgShowcaseDoctor[];
-  departments: Array<{ id: string; name: string; description: string | null; doctorCount: number }>;
+  departments: Array<{ id: string; name: string; description: string | null; icon: string | null; doctorCount: number }>;
   logo?: string | null;
   motto?: string | null;
   vision?: string | null;
@@ -283,6 +283,7 @@ export async function getOrganizationBySlug(formData: FormData): Promise<Organiz
       id: d.id,
       name: d.name,
       description: d.description || null,
+      icon: d.icon || null,
       doctorCount: d.employees ? d.employees.length : 0,
     })),
     logo: organization.logo || null,

@@ -32,6 +32,7 @@ docs/
 │   │   ├── overview.md
 │   │   ├── tech-stack.md
 │   │   ├── multi-tenancy.md
+│   │   ├── patient-consent-architecture.md
 │   │   ├── monorepo-structure.md
 │   │   ├── onboarding-verification.md
 │   │   ├── billing-philosophy.md
@@ -41,7 +42,8 @@ docs/
 │   │   ├── 0001-monorepo-package-structure.md
 │   │   ├── 0002-mobile-react-native-expo.md
 │   │   ├── 0003-desktop-electron-over-tauri.md
-│   │   └── 0004-onboarding-verification-approach.md
+│   │   ├── 0004-onboarding-verification-approach.md
+│   │   └── 0005-patient-owned-consent-gated-data.md
 │   ├── api/
 │   │   └── README.md
 │   └── deployment/

@@ -41,31 +41,31 @@ model User {
   gender        String?
   createdAt     DateTime  @default(now())
 
-  professions        UserProfession[]
-  memberships        OrganizationMembership[]
-  ownedOrgs          Organization[]           @relation("OrgOwner")
-  adminRoles         OrganizationAdmin[]
-  adminInvitationsSent AdminInvitation[]     @relation("AdminInvitedBy")
-  adminInvitationsReceived AdminInvitation[] @relation("AdminInvitedUser")
-  employees           OrganizationEmployee[]
-  employeeInvitationsSent EmployeeInvitation[] @relation("EmployeeInvitedBy")
-  employeeInvitationsReceived EmployeeInvitation[] @relation("EmployeeInvitedUser")
-  memberHistoriesActed OrganizationMemberHistory[] @relation("ActedBy")
-  memberHistoriesTargeted OrganizationMemberHistory[] @relation("TargetUser")
-  adminVotesInitiated AdminVote[]              @relation("AdminVoteInitiator")
-  adminVotesTargeted  AdminVote[]              @relation("AdminVoteTarget")
-  adminVoteResponses  AdminVoteResponse[]
-  bloodDonorProfile  BloodDonorProfile?
-  externalIdentities ExternalIdentity[]
-  patientProfile     PatientProfile?
+  professions                 UserProfession[]
+  memberships                 OrganizationMembership[]
+  ownedOrgs                   Organization[]              @relation("OrgOwner")
+  adminRoles                  OrganizationAdmin[]
+  adminInvitationsSent        AdminInvitation[]           @relation("AdminInvitedBy")
+  adminInvitationsReceived    AdminInvitation[]           @relation("AdminInvitedUser")
+  employees                   OrganizationEmployee[]
+  employeeInvitationsSent     EmployeeInvitation[]        @relation("EmployeeInvitedBy")
+  employeeInvitationsReceived EmployeeInvitation[]        @relation("EmployeeInvitedUser")
+  memberHistoriesActed        OrganizationMemberHistory[] @relation("ActedBy")
+  memberHistoriesTargeted     OrganizationMemberHistory[] @relation("TargetUser")
+  adminVotesInitiated         AdminVote[]                 @relation("AdminVoteInitiator")
+  adminVotesTargeted          AdminVote[]                 @relation("AdminVoteTarget")
+  adminVoteResponses          AdminVoteResponse[]
+  bloodDonorProfile           BloodDonorProfile?
+  externalIdentities          ExternalIdentity[]
+  patientProfile              PatientProfile?
 
   // Appointment & Prescription relations
-  patientAppointments   Appointment[]     @relation("PatientAppointments")
-  doctorAssignments     AppointmentDoctor[] @relation("DoctorAppointments")
-  patientPrescriptions  Prescription[]    @relation("PatientPrescriptions")
-  doctorPrescriptions   Prescription[]    @relation("DoctorPrescriptions")
-  doctorSchedules       DoctorSchedule[]  @relation("DoctorSchedules")
-  departmentsHeaded     Department[]      @relation("DepartmentHead")
+  patientAppointments  Appointment[]       @relation("PatientAppointments")
+  doctorAssignments    AppointmentDoctor[] @relation("DoctorAppointments")
+  patientPrescriptions Prescription[]      @relation("PatientPrescriptions")
+  doctorPrescriptions  Prescription[]      @relation("DoctorPrescriptions")
+  doctorSchedules      DoctorSchedule[]    @relation("DoctorSchedules")
+  departmentsHeaded    Department[]        @relation("DepartmentHead")
 
   // Blood Donation relations
   donorVerificationsReceived OrganizationDonorVerification[] @relation("DonorVerificationUser")
@@ -82,6 +82,11 @@ model User {
   medicalDocuments    MedicalDocument[]
   consentGrants       ConsentGrant[]       @relation("ConsentGrantsAsPatient")
   settings            UserSettings?
+  notifications       Notification[]       @relation("UserNotifications")
+  userFoodLogs        UserFoodLog[]
+  userCachedFoods     UserCachedFood[]
+  userExerciseLogs    UserExerciseLog[]
+  auditLogs           SystemAuditLog[]
 }
 
 model PlatformOwner {
@@ -231,9 +236,9 @@ model Organization {
   deletedAt          DateTime?
 
   // Location fields
-  address            String?
-  latitude           Float?
-  longitude          Float?
+  address   String?
+  latitude  Float?
+  longitude Float?
 
   // Profile fields
   logo               String?
@@ -252,6 +257,9 @@ model Organization {
   memberHistories       OrganizationMemberHistory[]
   adminVotes            AdminVote[]
   departments           Department[]
+  inventoryBatches      InventoryBatch[]
+  inventoryAlerts       InventoryAlert[]
+  bloodDonationUnits    BloodDonationUnit[]
   orgRoles              OrganizationRole[]
   schedules             DoctorSchedule[]
   appointments          Appointment[]
@@ -260,8 +268,8 @@ model Organization {
   aiConfiguration       AIConfiguration?
   subscription          Subscription?
   donorVerifications    OrganizationDonorVerification[]
-  consentGrantsReceived ConsentGrant[]           @relation("ConsentGrantsReceived")
-  consentGrantsSourced  ConsentGrant[]           @relation("ConsentGrantsSourced")
+  consentGrantsReceived ConsentGrant[]                  @relation("ConsentGrantsReceived")
+  consentGrantsSourced  ConsentGrant[]                  @relation("ConsentGrantsSourced")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -274,11 +282,15 @@ model Department {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
   description    String?
+  icon           String?
   headId         String?
   head           User?        @relation("DepartmentHead", fields: [headId], references: [id])
   createdAt      DateTime     @default(now())
 
-  employees OrganizationEmployee[]
+  employees           OrganizationEmployee[]
+  employeeInvitations EmployeeInvitation[]
+  inventoryBatches    InventoryBatch[]
+  inventoryAlerts     InventoryAlert[]
 
   @@index([organizationId])
 }
@@ -310,7 +322,7 @@ model OrganizationEmployee {
   organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId             String
   user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role               String            // kept for backward compatibility e.g. "DOCTOR", "NURSE", "STAFF"
+  role               String // kept for backward compatibility e.g. "DOCTOR", "NURSE", "STAFF"
   departmentId       String?
   department         Department?       @relation(fields: [departmentId], references: [id])
   organizationRoleId String?
@@ -337,7 +349,9 @@ model EmployeeInvitation {
   invitedUserId  String
   invitedUser    User             @relation("EmployeeInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
   email          String?
-  role           String           // Role being offered (DOCTOR, NURSE, etc.)
+  role           String // Role being offered (DOCTOR, NURSE, etc.)
+  departmentId   String?
+  department     Department?      @relation(fields: [departmentId], references: [id])
   status         InvitationStatus @default(PENDING)
   token          String           @unique
   createdAt      DateTime         @default(now())
@@ -346,6 +360,7 @@ model EmployeeInvitation {
 
   @@index([invitedUserId, status])
   @@index([organizationId, status])
+  @@index([departmentId])
 }
 
 // ─── Member History Log ────────────────────────────────────
@@ -354,12 +369,12 @@ model OrganizationMemberHistory {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actedBy        String       // Admin user ID who performed the action
+  actedBy        String // Admin user ID who performed the action
   actedByUser    User         @relation("ActedBy", fields: [actedBy], references: [id])
-  targetUserId   String       // The user being acted upon
+  targetUserId   String // The user being acted upon
   targetUser     User         @relation("TargetUser", fields: [targetUserId], references: [id])
   action         MemberAction
-  details        Json?        // Context: { role, departmentId, reason, etc. }
+  details        Json? // Context: { role, departmentId, reason, etc. }
   createdAt      DateTime     @default(now())
 
   @@index([organizationId, createdAt])
@@ -382,20 +397,20 @@ enum MemberAction {
 // ─────────────────────────────────────────────────────────────
 
 model AdminVote {
-  id             String              @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   initiatedById  String
-  initiatedBy    User                @relation("AdminVoteInitiator", fields: [initiatedById], references: [id], onDelete: Cascade)
+  initiatedBy    User         @relation("AdminVoteInitiator", fields: [initiatedById], references: [id], onDelete: Cascade)
   targetAdminId  String
-  targetAdmin    User                @relation("AdminVoteTarget", fields: [targetAdminId], references: [id], onDelete: Cascade)
+  targetAdmin    User         @relation("AdminVoteTarget", fields: [targetAdminId], references: [id], onDelete: Cascade)
   action         VoteAction
   reason         String?
-  status         VoteStatus          @default(PENDING)
-  createdAt      DateTime            @default(now())
+  status         VoteStatus   @default(PENDING)
+  createdAt      DateTime     @default(now())
   expiresAt      DateTime?
 
-  votes          AdminVoteResponse[]
+  votes AdminVoteResponse[]
 
   @@index([organizationId, status])
   @@index([targetAdminId, status])
@@ -414,14 +429,14 @@ enum VoteStatus {
 }
 
 model AdminVoteResponse {
-  id        String    @id @default(cuid())
-  voteId    String
-  vote      AdminVote @relation(fields: [voteId], references: [id], onDelete: Cascade)
-  adminId   String
-  admin     User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  approved  Boolean
-  comment   String?
-  votedAt   DateTime  @default(now())
+  id       String    @id @default(cuid())
+  voteId   String
+  vote     AdminVote @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  adminId  String
+  admin    User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  approved Boolean
+  comment  String?
+  votedAt  DateTime  @default(now())
 
   @@unique([voteId, adminId])
 }
@@ -642,6 +657,8 @@ model PatientProfile {
   dietaryRestrictions     String[]
   languagePreference      String?
   requiresGuardianConsent Boolean  @default(false)
+  weightKg                Float?
+  heightCm                Float?
   extended                Json?
 }
 
@@ -722,7 +739,7 @@ model MedicalDocument {
   title         String
   description   String?
   fileUrl       String
-  documentType  String       // "LAB_REPORT", "IMAGING", "PRESCRIPTION_SCAN", "OTHER"
+  documentType  String // "LAB_REPORT", "IMAGING", "PRESCRIPTION_SCAN", "OTHER"
   uploadedAt    DateTime     @default(now())
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
@@ -784,14 +801,14 @@ model Routine {
 }
 
 model RoutineItem {
-  id        String  @id @default(cuid())
-  routineId String
-  routine   Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
-  order     Int
-  label     String
-  startTime String? // e.g. "07:00"
-  endTime   String? // e.g. "09:00"
-  payload   Json
+  id         String  @id @default(cuid())
+  routineId  String
+  routine    Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  order      Int
+  label      String
+  startTime  String? // e.g. "07:00"
+  endTime    String? // e.g. "09:00"
+  payload    Json
   isExternal Boolean @default(false)
 
   completions RoutineCompletion[]
@@ -839,7 +856,108 @@ enum CompletionStatus {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 6. Blood Donation System
+// 6. Core Inventory System
+// ─────────────────────────────────────────────────────────────
+
+model InventoryCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  items InventoryItem[]
+}
+
+model InventoryItem {
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  categoryId   String
+  category     InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  unit         String?
+  reorderLevel Int?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+
+  batches InventoryBatch[]
+  alerts  InventoryAlert[]
+
+  @@index([categoryId, isActive])
+}
+
+model InventoryBatch {
+  id             String        @id @default(cuid())
+  itemId         String
+  item           InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departmentId   String?
+  department     Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  batchNumber    String
+  quantity       Int           @default(0)
+  expiryDate     DateTime?
+  receivedAt     DateTime      @default(now())
+  notes          String?
+  isActive       Boolean       @default(true)
+
+  movements          InventoryMovement[]
+  bloodDonationUnits BloodDonationUnit[]
+  dispenses          PrescriptionDispense[]
+
+  @@index([organizationId, departmentId])
+  @@index([organizationId, itemId])
+  @@index([organizationId, expiryDate])
+  @@index([batchNumber])
+}
+
+enum MovementType {
+  PURCHASE
+  DONATION
+  DISPENSE
+  WASTAGE
+  ADJUSTMENT
+}
+
+model InventoryMovement {
+  id          String         @id @default(cuid())
+  batchId     String
+  batch       InventoryBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  quantity    Int
+  type        MovementType
+  performedBy String
+  performedAt DateTime       @default(now())
+  notes       String?
+
+  @@index([batchId, performedAt])
+}
+
+enum AlertStatus {
+  ACTIVE
+  RESOLVED
+  DISMISSED
+}
+
+model InventoryAlert {
+  id              String        @id @default(cuid())
+  itemId          String
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departmentId    String?
+  department      Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  currentQuantity Int
+  threshold       Int
+  triggeredAt     DateTime      @default(now())
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  status          AlertStatus   @default(ACTIVE)
+
+  @@index([organizationId, status])
+  @@index([itemId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 7. Blood Donation System
 // ─────────────────────────────────────────────────────────────
 
 model BloodDonorProfile {
@@ -854,11 +972,12 @@ model BloodDonorProfile {
   districtId        String?
   districtRel       District? @relation(fields: [districtId], references: [id])
   isVerified        Boolean   @default(false)
-  verifiedBy        String?   // Organization ID
+  verifiedBy        String? // Organization ID
   verifiedAt        DateTime?
   medicalConditions String?
 
   contactShareRequests ContactShareRequest[]
+  bloodDonationUnits   BloodDonationUnit[]
 
   @@index([bloodType, isAvailable, district])
 }
@@ -902,17 +1021,44 @@ enum BloodType {
   O_NEG
 }
 
+model BloodDonationUnit {
+  id             String             @id @default(cuid())
+  donorProfileId String
+  donorProfile   BloodDonorProfile  @relation(fields: [donorProfileId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bloodType      BloodType
+  volume         Float
+  collectionDate DateTime           @default(now())
+  expiryDate     DateTime
+  batchId        String?
+  batch          InventoryBatch?    @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  status         DonationUnitStatus @default(COLLECTED)
+  notes          String?
+
+  @@index([organizationId, bloodType, status])
+  @@index([expiryDate])
+}
+
+enum DonationUnitStatus {
+  COLLECTED
+  TESTED
+  READY
+  DISPENSED
+  WASTED
+}
+
 model ContactShareRequest {
-  id                       String             @id @default(cuid())
+  id                       String            @id @default(cuid())
   requesterId              String
-  requester                User               @relation("ContactShareRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requester                User              @relation("ContactShareRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   donorProfileId           String
-  donorProfile             BloodDonorProfile  @relation(fields: [donorProfileId], references: [id], onDelete: Cascade)
+  donorProfile             BloodDonorProfile @relation(fields: [donorProfileId], references: [id], onDelete: Cascade)
   fieldsRequested          String[]
   fieldsShared             String[]
-  status                   RequestStatus      @default(PENDING)
+  status                   RequestStatus     @default(PENDING)
   disclaimerAcknowledgedAt DateTime?
-  createdAt                DateTime           @default(now())
+  createdAt                DateTime          @default(now())
   respondedAt              DateTime?
 
   @@index([requesterId, donorProfileId])
@@ -1005,14 +1151,14 @@ model DoctorSchedule {
   workingDays                 String[]
   startTime                   String
   endTime                     String
-  lunchBreakStart             String?        // e.g., "13:00"
-  lunchBreakEnd               String?        // e.g., "14:00"
+  lunchBreakStart             String? // e.g., "13:00"
+  lunchBreakEnd               String? // e.g., "14:00"
   isActive                    Boolean        @default(false) // only approved schedules are active
   status                      ScheduleStatus @default(PENDING)
-  requestedChanges            Json?          // stores proposed changes when pending
+  requestedChanges            Json? // stores proposed changes when pending
   requestedAt                 DateTime?      @default(now())
   reviewedAt                  DateTime?
-  reviewedBy                  String?        // admin userId
+  reviewedBy                  String? // admin userId
 
   @@index([doctorUserId, organizationId])
   @@index([organizationId, status])
@@ -1044,6 +1190,11 @@ model Appointment {
   patient        User             @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
   queueId        String
   queue          AppointmentQueue @relation(fields: [queueId], references: [id])
+
+  patientName    String?
+  patientPhone   String?
+  patientAge     Int?
+  patientGender  String?
 
   status          AppointmentStatus @default(PENDING)
   requestedAt     DateTime          @default(now())
@@ -1085,6 +1236,7 @@ enum AppointmentStatus {
 enum BookingChannel {
   SELF_BOOKED
   WALK_IN
+  PUBLIC_FORM
 }
 
 model AppointmentDoctor {
@@ -1189,11 +1341,33 @@ model AppointmentNotification {
   wasSent       Boolean            @default(false)
 }
 
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType  @default(INFO)
+  link      String?
+  isRead    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+}
+
 enum NotificationReason {
   ESTIMATION_UPDATED
   QUEUE_DISRUPTED
   RESCHEDULE_OFFERED
   SUBSTITUTE_OFFERED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1218,8 +1392,9 @@ model Prescription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  medicines         PrescriptionMedicine[]
-  items             PrescriptionItem[]
+  medicines PrescriptionMedicine[]
+  dispenses PrescriptionDispense[]
+  items     PrescriptionItem[]
 }
 
 model PrescriptionMedicine {
@@ -1230,16 +1405,44 @@ model PrescriptionMedicine {
   dosage         String
   frequency      String
   duration       String
+  medexBrandId   String?
+  medexSlug      String?
+  medexUrl       String?
+  genericName    String?
+  rxnormRxcui    String?
+  rxnormName     String?
 
   // Structured timing instructions stored as JSON array.
   // Each element: { mealRelation: MealRelation, mealType: MealType, dosage: String }
   // Example: [{ "mealRelation": "PRE_MEAL", "mealType": "BREAKFAST", "dosage": "500mg" }]
   timingInstructions Json?
+  drugMetadata       Json?
 
   // NEW: Flag to track if this was added to routine
   addedToRoutine Boolean @default(false)
 
+  dispenses PrescriptionDispense[]
+
   @@index([prescriptionId])
+  @@index([medexBrandId, medexSlug])
+}
+
+model PrescriptionDispense {
+  id                     String                @id @default(cuid())
+  prescriptionId         String
+  prescription           Prescription          @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  prescriptionMedicineId String?
+  prescriptionMedicine   PrescriptionMedicine? @relation(fields: [prescriptionMedicineId], references: [id], onDelete: SetNull)
+  batchId                String
+  batch                  InventoryBatch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  quantity               Int
+  dispensedAt            DateTime              @default(now())
+  dispensedBy            String
+  notes                  String?
+
+  @@index([prescriptionId])
+  @@index([batchId])
+  @@index([prescriptionMedicineId])
 }
 
 model PrescriptionItem {
@@ -1277,16 +1480,16 @@ model Food {
   mineralMgPerG Float        @default(0)
   waterMgPerG   Float        @default(0)
   source        FoodSource   @default(LOCAL_SEED)
-  externalId    String?      // USDA FDC ID or external catalog ID
+  externalId    String? // USDA FDC ID or external catalog ID
   isVerified    Boolean      @default(true)
   createdAt     DateTime     @default(now())
 
   mealFoods  MealItemFood[]
   logEntries FoodLogEntry[]
 
+  @@unique([source, externalId])
   @@index([foodName])
   @@index([category])
-  @@unique([source, externalId])
 }
 
 enum FoodCategory {
@@ -1394,22 +1597,19 @@ model Review {
 }
 
 model HealthDiaryEntry {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  bloodPressure String?
-  heartRate     Int?
-  painLevel     Int?
-  mood          String?
-  sleepHours    Float?
-  appetite      String?
-  notes         String?
-
-  loggedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note       String   @db.Text
+  mood       String?  // e.g., "happy", "sad", "anxious", "tired"
+  symptoms   Json?    // array of symptom strings like ["headache", "fever"]
+  tags       String[] // e.g., "urgent", "recurring", "post-meal"
+  recordedAt DateTime @default(now()) // when user recorded it
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId])
+  @@index([recordedAt])
 }
 
 model AIConfiguration {
@@ -1421,6 +1621,8 @@ model AIConfiguration {
   byokProvider      String?
   byokKeyCiphertext String?
   installedAgents   String[]
+  qrLevels          Json?
+  qrUseCases        Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1490,7 +1692,7 @@ model ConsentGrantEvent {
   action    ConsentAction // GRANTED | REVOKED | EXPIRED | SCOPE_MODIFIED
   actorId   String // who performed the action — normally the patient
   reason    String?
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 }
 
 enum ConsentAction {
@@ -1525,3 +1727,114 @@ enum AccessActorType {
   AI_AGENT
 }
 
+// ─── Global Food Cache ──────────────────────────────────────
+
+model CachedFood {
+  id          String   @id @default(cuid())
+  sourceId    String?  // external ID (USDA FDC ID, FatSecret ID)
+  source      String   // "USDA" | "FatSecret" | "OpenFoodFacts"
+  name        String
+  brand       String?
+  category    String?  // "FRUIT", "VEGETABLE", "BEVERAGE", "SNACK", etc.
+  nutrients   Json     // { calories, protein, carbs, fat, fiber, sugar, ... }
+  servingSize String?
+  unit        String?  // g, ml, piece, etc.
+  isGlobal    Boolean  @default(true)
+  isProcessed Boolean  @default(false)
+  popularity  Int      @default(0)
+  lastUpdated DateTime @default(now())
+
+  @@unique([source, sourceId])
+  @@index([name])
+  @@index([category])
+}
+
+// ─── User‑Specific Food Cache ──────────────────────────────
+
+model UserCachedFood {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId    String?
+  name        String
+  brand       String?
+  nutrients   Json
+  servingSize String?
+  unit        String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  lastUpdated DateTime @updatedAt
+
+  @@unique([userId, sourceId])
+  @@index([userId])
+  @@index([name])
+}
+
+// ─── Food Log (User Consumption) ───────────────────────────
+
+model UserFoodLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodId      String?  // references CachedFood.id
+  userFoodId  String?  // references UserCachedFood.id
+  amountGrams Float
+  notes       String?
+  consumedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([consumedAt])
+}
+
+// ─── Global Exercise Cache ──────────────────────────────────
+
+model CachedExercise {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // "cardio", "strength", "yoga", "stretching", "sports"
+  muscle      String?
+  equipment   String?
+  difficulty  String?
+  instructions String?
+  metBase     Float?   // base MET value for this exercise
+  lastUpdated DateTime @default(now())
+  popularity  Int      @default(0)
+
+  @@unique([name])
+  @@index([name])
+}
+
+// ─── User Exercise Log ──────────────────────────────────────
+
+model UserExerciseLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String?  // references CachedExercise.id
+  exerciseName String  // fallback name
+  duration    Int      // in minutes
+  intensity   String   // "low", "medium", "high"
+  caloriesBurned Float
+  loggedAt    DateTime @default(now())
+  notes       String?
+
+  @@index([userId])
+  @@index([loggedAt])
+}
+
+// ─── System Audit Log ───────────────────────────────────────
+
+model SystemAuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g., "USER_LOGIN", "ORG_STATUS_CHANGE", "SEND_ANNOUNCEMENT"
+  details   Json?    // Stores extra context
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

@@ -1,0 +1,112 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { Search, Loader2 } from 'lucide-react'
+
+interface FoodSearchInputProps {
+  onSelect: (food: any) => void
+  placeholder?: string
+  className?: string
+}
+
+export function FoodSearchInput({ onSelect, placeholder = 'Search food...', className = '' }: FoodSearchInputProps) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (query.trim().length >= 2) {
+        setLoading(true)
+        try {
+          const res = await fetch(`/api/foods/search?q=${encodeURIComponent(query.trim())}`)
+          const data = res.ok ? await res.json() : []
+          setResults(Array.isArray(data) ? data : [])
+          setShowDropdown(true)
+        } catch (e) {
+          console.error(e)
+          setResults([])
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setResults([])
+        setShowDropdown(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSelect = (item: any) => {
+    setQuery(item.name)
+    setShowDropdown(false)
+    onSelect(item)
+  }
+
+  return (
+    <div className={`relative ${className}`}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" strokeWidth={1.6} />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => results.length > 0 && setShowDropdown(true)}
+          placeholder={placeholder}
+          className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-stone-400"
+        />
+        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 animate-spin" strokeWidth={1.6} />}
+      </div>
+      {showDropdown && results.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-30 mt-1 w-full bg-white rounded-xl border border-stone-200 shadow-xl max-h-60 overflow-y-auto divide-y divide-stone-100"
+        >
+          {results.map((item, idx) => (
+            <button
+              key={item.id || item.sourceId || `${item.name}-${idx}`}
+              type="button"
+              onClick={() => handleSelect(item)}
+              className="w-full text-left px-4 py-2.5 hover:bg-stone-50 transition-colors flex items-start justify-between gap-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-stone-900">{item.name}</p>
+                {item.brand && <p className="text-xs text-stone-500">{item.brand}</p>}
+                {item.nutrients && (
+                  <div className="flex gap-2 text-xs text-stone-500 mt-1 font-mono">
+                    <span className="text-emerald-700 font-semibold">{item.nutrients.calories ?? 0} kcal</span>
+                    <span>P: {item.nutrients.protein ?? 0}g</span>
+                    <span>C: {item.nutrients.carbs ?? 0}g</span>
+                    <span>F: {item.nutrients.fat ?? 0}g</span>
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 shrink-0">
+                {item.source || (item.isGlobal ? 'Global' : 'Custom')}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getDepartmentPresets } from "@/lib/department-presets";
 
 const createOrgSchema = z.object({
   name: z.string().min(2, "Organization name must be at least 2 characters"),
@@ -88,6 +89,14 @@ export async function createOrganization(formData: FormData) {
     establishedYear: formData.get("establishedYear") ? Number(formData.get("establishedYear")) : null,
   });
 
+  const orgType = await prisma.organizationType.findUnique({
+    where: { id: data.organizationTypeId },
+    select: { id: true, code: true, name: true },
+  });
+  if (!orgType) {
+    throw new Error("Selected organization type was not found.");
+  }
+
   // Generate unique slug
   let slug = data.name
     .toLowerCase()
@@ -124,6 +133,18 @@ export async function createOrganization(formData: FormData) {
         verificationStatus: "verified", // Automatically active for initial creation
       },
     });
+
+    const presets = getDepartmentPresets(orgType.code);
+    if (presets.length > 0) {
+      await tx.department.createMany({
+        data: presets.map((preset) => ({
+          organizationId: org.id,
+          name: preset.name,
+          description: preset.description,
+          icon: preset.icon,
+        })),
+      });
+    }
 
     const admin = await tx.organizationAdmin.create({
       data: {

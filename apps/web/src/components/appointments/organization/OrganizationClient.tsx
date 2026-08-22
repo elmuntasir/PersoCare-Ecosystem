@@ -9,6 +9,8 @@ import {
   Clock,
   Calendar,
   ExternalLink,
+  Sparkles,
+  HeartPulse,
 } from "lucide-react";
 import { BookAppointmentModal } from "../BookAppointmentModal";
 import { ReviewSection } from "../ReviewSection";
@@ -68,7 +70,7 @@ export function OrganizationClient({ data }: OrganizationClientProps) {
             )}
             <div>
               <h1 className="font-display text-3xl text-[var(--teal-900)]">{data.name}</h1>
-              {data.motto && <p className="text-sm text-[var(--ink-soft)] italic mt-1">"{data.motto}"</p>}
+              {data.motto && <p className="text-sm text-[var(--ink-soft)] italic mt-1">{data.motto}</p>}
               <div className="flex flex-wrap items-center gap-3 mt-2">
                 <span className="px-2 py-0.5 rounded-full bg-[var(--sage-200)] text-xs font-mono text-[var(--ink-soft)]">
                   {data.organizationType.name}
@@ -108,6 +110,40 @@ export function OrganizationClient({ data }: OrganizationClientProps) {
           )}
         </div>
 
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          {data.vision && (
+            <div className="rounded-2xl bg-[var(--paper)] border border-[var(--sage-200)] p-4">
+              <div className="flex items-center gap-2 mb-2 text-[var(--teal-900)]">
+                <Sparkles className="w-4 h-4 text-[var(--coral)]" />
+                <span className="text-xs font-mono uppercase tracking-wider">Vision</span>
+              </div>
+              <p className="text-sm text-[var(--ink)] leading-relaxed font-body">{data.vision}</p>
+            </div>
+          )}
+          {data.mission && (
+            <div className="rounded-2xl bg-[var(--paper)] border border-[var(--sage-200)] p-4">
+              <div className="flex items-center gap-2 mb-2 text-[var(--teal-900)]">
+                <HeartPulse className="w-4 h-4 text-[var(--coral)]" />
+                <span className="text-xs font-mono uppercase tracking-wider">Mission</span>
+              </div>
+              <p className="text-sm text-[var(--ink)] leading-relaxed font-body">{data.mission}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {data.establishedYear && (
+            <span className="px-3 py-1.5 rounded-full bg-[var(--paper)] border border-[var(--sage-200)] text-xs font-body text-[var(--ink-soft)]">
+              Established {data.establishedYear}
+            </span>
+          )}
+          {typeof data.patientServedCount === "number" && (
+            <span className="px-3 py-1.5 rounded-full bg-[var(--paper)] border border-[var(--sage-200)] text-xs font-body text-[var(--ink-soft)]">
+              {data.patientServedCount.toLocaleString()} patients served
+            </span>
+          )}
+        </div>
+
         {data.address && (
           <div className="mt-3 flex items-start gap-2 text-sm text-[var(--ink-soft)] font-body">
             <MapPin className="w-4 h-4 mt-0.5" strokeWidth={1.6} />
@@ -132,6 +168,48 @@ export function OrganizationClient({ data }: OrganizationClientProps) {
             </span>
           )}
         </div>
+      </div>
+
+      {/* Departments */}
+      <div className="bg-white rounded-2xl border border-[var(--sage-200)] p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <Building className="w-5 h-5 text-[var(--teal-900)]" strokeWidth={1.6} />
+          <h2 className="font-display text-xl text-[var(--teal-900)]">Departments</h2>
+          <span className="text-sm text-[var(--ink-soft)] font-body">({data.departments.length})</span>
+        </div>
+        {data.departments.length === 0 ? (
+          <div className="rounded-xl bg-[var(--paper)] border border-[var(--sage-200)] p-5 text-sm text-[var(--ink-soft)] font-body">
+            No departments have been published yet.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.departments.map((department) => (
+              <div
+                key={department.id}
+                className="rounded-2xl bg-[var(--paper)] border border-[var(--sage-200)] p-4 hover:border-[var(--teal-900)]/40 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white border border-[var(--sage-200)] flex items-center justify-center text-xl shrink-0">
+                    {department.icon || "🏥"}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-body font-semibold text-[var(--ink)] truncate">
+                      {department.name}
+                    </h3>
+                    <p className="text-xs text-[var(--ink-soft)] font-body mt-0.5">
+                      {department.doctorCount} doctor{department.doctorCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </div>
+                {department.description && (
+                  <p className="mt-3 text-sm text-[var(--ink-soft)] font-body leading-relaxed">
+                    {department.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Doctors Section with Department Filter */}

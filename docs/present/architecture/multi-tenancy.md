@@ -22,8 +22,19 @@ justify.
 > tracked as an open decision — see `adr/template.md` for the format
 > to use once it's settled, and add it here once decided.
 
+## Data Ownership & Consent Boundaries
+
+While tenant isolation remains mandatory, data ownership is **patient-centric**:
+
+- Patients own their consolidated health records across tenants.
+- Tenant isolation is the default boundary, but patients can explicitly grant cross-tenant access to specific providers.
+- Human users and AI agents alike are bound by these consent rules at the query layer.
+
+See [`patient-consent-architecture.md`](file:///Users/mun.rafin/Internship/PersoCare-Ecosystem/docs/present/architecture/patient-consent-architecture.md) and [`ADR-0005`](file:///Users/mun.rafin/Internship/PersoCare-Ecosystem/docs/present/adr/0005-patient-owned-consent-gated-data.md) for the complete specification.
+
 ## Onboarding
 
 See `onboarding-verification.md` for how a new tenant is verified
 before activation — this is intentionally **not** a fully automatic
 step, unlike the rest of the onboarding flow.
+

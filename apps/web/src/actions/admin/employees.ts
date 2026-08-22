@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 
@@ -11,6 +12,12 @@ import { randomUUID } from "crypto";
 export async function getOrganizationEmployees(organizationId: string) {
   const user = await getSessionUser();
   if (!user) throw new Error("Unauthorized");
+
+  const departments = await prisma.department.findMany({
+    where: { organizationId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
 
   const employees = await prisma.organizationEmployee.findMany({
     where: { organizationId, isActive: true },
@@ -37,7 +44,7 @@ export async function getOrganizationEmployees(organizationId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  return { employees, pendingInvitations };
+  return { employees, pendingInvitations, departments };
 }
 
 // ─── Invite Employee (with Audit Logging) ───────────────────
@@ -175,6 +182,7 @@ export async function inviteEmployee(formData: FormData) {
       invitedUserId: targetUser.id,
       email: targetUser.email,
       role: data.role,
+      departmentId: data.departmentId || null,
       token: randomUUID(),
     },
   });
@@ -234,6 +242,7 @@ export async function respondToEmployeeInvitation(formData: FormData) {
         },
         update: {
           role: invitation.role,
+          departmentId: invitation.departmentId,
           isActive: true,
           leftAt: null,
         },
@@ -241,6 +250,7 @@ export async function respondToEmployeeInvitation(formData: FormData) {
           organizationId: invitation.organizationId,
           userId: user.id,
           role: invitation.role,
+          departmentId: invitation.departmentId,
           isActive: true,
         },
       });
@@ -258,6 +268,7 @@ export async function respondToEmployeeInvitation(formData: FormData) {
           action: "INVITE_ACCEPTED",
           details: {
             role: invitation.role,
+            departmentId: invitation.departmentId,
             invitationId: invitation.id,
           },
         },
@@ -278,6 +289,7 @@ export async function respondToEmployeeInvitation(formData: FormData) {
           action: "INVITE_DECLINED",
           details: {
             role: invitation.role,
+            departmentId: invitation.departmentId,
             invitationId: invitation.id,
           },
         },
@@ -386,9 +398,9 @@ export async function updateEmployee(formData: FormData) {
   });
   if (!admin) throw new Error("Unauthorized – Admin privileges required");
 
-  const updateData: any = {};
+  const updateData: Prisma.OrganizationEmployeeUpdateInput = {};
   let action: "ROLE_CHANGED" | "DEPARTMENT_CHANGED" | null = null;
-  let details: any = {};
+  let details: Prisma.InputJsonValue = {};
 
   if (role && role !== employee.role) {
     updateData.role = role;
@@ -397,7 +409,11 @@ export async function updateEmployee(formData: FormData) {
   }
 
   if (departmentId !== undefined && departmentId !== employee.departmentId) {
-    updateData.departmentId = departmentId;
+    if (departmentId) {
+      updateData.department = { connect: { id: departmentId } };
+    } else {
+      updateData.department = { disconnect: true };
+    }
     if (!action) action = "DEPARTMENT_CHANGED";
     details = { ...details, oldDepartmentId: employee.departmentId, newDepartmentId: departmentId };
   }
@@ -456,8 +472,8 @@ export async function getMemberHistory(formData: FormData) {
   });
   if (!admin) throw new Error("Unauthorized – Admin access required");
 
-  const where: any = { organizationId };
-  if (action) where.action = action;
+  const where: Prisma.OrganizationMemberHistoryWhereInput = { organizationId };
+  if (action) where.action = action as any;
   if (dateFrom || dateTo) {
     where.createdAt = {};
     if (dateFrom) where.createdAt.gte = new Date(dateFrom);
@@ -504,4 +520,3 @@ export async function getMemberHistory(formData: FormData) {
     },
   };
 }
-

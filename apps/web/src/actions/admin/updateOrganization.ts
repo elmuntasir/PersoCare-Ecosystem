@@ -75,7 +75,6 @@ export async function updateOrganization(formData: FormData) {
       name: data.name,
       organizationTypeId: data.organizationTypeId,
       specialties: data.specialties,
-      description: data.description,
       address: data.address,
       latitude: data.latitude,
       longitude: data.longitude,
