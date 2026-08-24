@@ -25,7 +25,7 @@ export default async function MyAppointmentsPage() {
           <span className="text-[var(--teal-900)] font-medium">My Bookings</span>
         </div>
 
-        <MyAppointmentsSection appointments={appointments} onRefresh={() => {}} />
+        <MyAppointmentsSection appointments={appointments} />
       </div>
     </main>
   );

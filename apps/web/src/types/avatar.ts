@@ -1,11 +1,12 @@
 export type CharacterId = 'poro' | 'tomo' | 'bulu' | 'gulu'
 
-export type AnimationName = 'idle' | 'chase' | 'sleep' | 'eat'
+export type AnimationName = 'idle' | 'chase' | 'sleep' | 'eat' | 'walk'
 
 export interface Character {
   id: CharacterId
   name: string
   emoji: string
+  avatarImage?: string
   description: string
   animations: AnimationName[]
 }
@@ -33,6 +34,10 @@ export interface AIProvider {
   icon: string
   model: string
   apiKey: string
+  providerKey?: string
+  baseUrl?: string
+  contextWindow?: number
   enabled: boolean
   rateLimited?: boolean
 }
+

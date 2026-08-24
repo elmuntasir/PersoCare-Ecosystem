@@ -85,8 +85,35 @@ model User {
   notifications       Notification[]       @relation("UserNotifications")
   userFoodLogs        UserFoodLog[]
   userCachedFoods     UserCachedFood[]
-  userExerciseLogs    UserExerciseLog[]
-  auditLogs           SystemAuditLog[]
+  userExerciseLogs           UserExerciseLog[]
+  auditLogs                  SystemAuditLog[]
+  chatMessages               ChatMessage[]               @relation("UserChatMessages")
+  metabolicRiskAssessments   MetabolicRiskAssessment[]
+}
+
+model MetabolicRiskAssessment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inputs    Json
+  tier      String
+  results   Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserChatMessages", fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model PlatformOwner {

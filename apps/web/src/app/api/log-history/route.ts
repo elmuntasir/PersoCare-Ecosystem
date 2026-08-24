@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // ─── Types ─────────────────────────────────────────────────
 
 export type LogFilter = "week" | "month" | "year";
-export type LogCategory = "all" | "diet" | "exercise" | "medicine" | "health_diary";
+export type LogCategory = "all" | "diet" | "exercise" | "medicine" | "health_diary" | "metabolicRisk";
 
 export type LogTableRow = {
   id: string;
@@ -121,11 +121,12 @@ export async function GET(request: Request) {
     const includeExercise = category === "all" || category === "exercise";
     const includeMedicine = category === "all" || category === "medicine";
     const includeHealthDiary = category === "all" || category === "health_diary";
+    const includeMetabolicRisk = category === "all" || category === "metabolicRisk";
 
     type UnifiedEntry = {
       id: string;
       date: string; // YYYY-MM-DD
-      category: "Diet" | "Exercise" | "Medicine" | "Health Diary";
+      category: "Diet" | "Exercise" | "Medicine" | "Health Diary" | "Metabolic Risk";
       itemLabel: string;
       timeWindow: string;
       status: "DONE" | "LATE" | "MISSED";
@@ -366,7 +367,45 @@ export async function GET(request: Request) {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 5. FILTER (SEARCH), AGGREGATE SUMMARY & CHARTS, PAGINATE
+    // 5. METABOLIC RISK ASSESSMENTS
+    // ─────────────────────────────────────────────────────────────
+    if (includeMetabolicRisk) {
+      const assessments = await prisma.metabolicRiskAssessment.findMany({
+        where: {
+          userId: user.id,
+          createdAt: { gte: start, lte: end },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      for (const assessment of assessments) {
+        const dateStr = assessment.createdAt.toISOString().split("T")[0];
+        const parsedResults = assessment.results as Array<{ label: string; risk: string }>;
+        const highRiskLabels = parsedResults
+          .filter((r) => r.risk === "High")
+          .map((r) => r.label.replace(/_/g, " "));
+
+        allEntries.push({
+          id: `metabolic-risk-${assessment.id}`,
+          date: dateStr,
+          category: "Metabolic Risk",
+          itemLabel:
+            highRiskLabels.length > 0
+              ? `Tier ${assessment.tier} — Elevated: ${highRiskLabels.join(", ")}`
+              : `Tier ${assessment.tier} — All low risk`,
+          timeWindow: "Screening",
+          status: "DONE",
+          completedAt: assessment.createdAt.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          rawDate: assessment.createdAt,
+        });
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 6. FILTER (SEARCH), AGGREGATE SUMMARY & CHARTS, PAGINATE
     // ─────────────────────────────────────────────────────────────
 
     // Apply search filter

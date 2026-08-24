@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   Clock,
@@ -22,10 +23,12 @@ import { RescheduleModal } from "./RescheduleModal";
 
 interface MyAppointmentsSectionProps {
   appointments: PatientAppointmentItem[];
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export function MyAppointmentsSection({ appointments, onRefresh }: MyAppointmentsSectionProps) {
+  const router = useRouter();
+  const refresh = onRefresh ?? (() => router.refresh());
   const [selectedForReview, setSelectedForReview] = useState<{
     organizationId: string;
     organizationName: string;
@@ -50,7 +53,7 @@ export function MyAppointmentsSection({ appointments, onRefresh }: MyAppointment
       formData.append("appointmentId", appointmentId);
       formData.append("reason", "Cancelled by patient via portal");
       await cancelAppointment(formData);
-      onRefresh();
+      refresh();
     } catch (err: any) {
       setCancelError(err.message || "Failed to cancel appointment");
     } finally {
@@ -306,7 +309,7 @@ export function MyAppointmentsSection({ appointments, onRefresh }: MyAppointment
           onClose={() => setRescheduleTarget(null)}
           onSuccess={() => {
             setRescheduleTarget(null);
-            onRefresh();
+            refresh();
           }}
         />
       )}
@@ -321,7 +324,7 @@ export function MyAppointmentsSection({ appointments, onRefresh }: MyAppointment
           onClose={() => setSelectedForReview(null)}
           onSuccess={() => {
             setSelectedForReview(null);
-            onRefresh();
+            refresh();
           }}
         />
       )}

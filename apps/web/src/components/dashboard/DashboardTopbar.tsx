@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Bot, Feather } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { QuickNoteModal } from "@/components/healthDiary/QuickNoteModal";
+import { HeaderBackButton } from "@/components/layout/HeaderBackButton";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "Overview",
@@ -46,7 +47,8 @@ export function DashboardTopbar({ user }: { user: DashboardUser }) {
   return (
     <>
       <header className="flex items-center justify-between px-6 md:px-10 py-3.5 border-b border-[var(--sage-200)] bg-white">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <HeaderBackButton />
           <h1 className="font-display font-bold text-lg text-[var(--teal-900)] tracking-tight">
             {pageTitle}
           </h1>

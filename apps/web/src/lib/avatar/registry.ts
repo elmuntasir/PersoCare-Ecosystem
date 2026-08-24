@@ -2,125 +2,128 @@ import { Character, AnimationDefinition, AnimationConfig, CharacterId, Animation
 
 export const CHARACTERS: Character[] = [
   {
+    id: 'gulu',
+    name: 'Gulu',
+    emoji: '🌱',
+    avatarImage: '/images/animations/gulu/gulu.png',
+    description: 'A sleepy & energetic sprout',
+    animations: ['idle', 'walk', 'chase', 'eat', 'sleep'],
+  },
+  {
     id: 'poro',
     name: 'Poro',
     emoji: '🌱',
+    avatarImage: '/images/animations/poro/poro.png',
     description: 'A curious little sprout',
-    animations: ['idle', 'chase', 'sleep', 'eat'],
+    animations: ['idle', 'walk', 'chase', 'eat', 'sleep'],
   },
   {
     id: 'tomo',
     name: 'Tomo',
     emoji: '🍃',
+    avatarImage: '/images/animations/tomo/tomo.png',
     description: 'A gentle leaf friend',
-    animations: ['idle', 'chase', 'sleep', 'eat'],
+    animations: ['idle', 'walk', 'chase', 'eat', 'sleep'],
   },
   {
     id: 'bulu',
     name: 'Bulu',
     emoji: '🌿',
+    avatarImage: '/images/animations/bulu/bulu.png',
     description: 'A playful plant buddy',
-    animations: ['idle', 'chase', 'sleep', 'eat'],
-  },
-  {
-    id: 'gulu',
-    name: 'Gulu',
-    emoji: '🌱',
-    description: 'A sleepy little sprout',
-    animations: ['idle', 'chase', 'sleep', 'eat'],
+    animations: ['idle', 'walk', 'chase', 'eat', 'sleep'],
   },
 ]
 
-const defaultIdleConfig: AnimationDefinition = {
-  frameWidth: 216,
-  frameHeight: 304,
-  columns: 6,
-  rows: 4,
-  totalFrames: 24,
-  fps: 12,
-  loop: true,
-}
 
-const defaultChaseConfig: AnimationDefinition = {
-  frameWidth: 1024,
-  frameHeight: 1024,
+const guluIdleConfig: AnimationDefinition = {
+  frameWidth: 512,
+  frameHeight: 512,
   columns: 6,
   rows: 3,
   totalFrames: 18,
-  fps: 12,
+  fps: 3,
+  loop: true,
+}
+
+const guluWalkConfig: AnimationDefinition = {
+  frameWidth: 512,
+  frameHeight: 512,
+  columns: 6,
+  rows: 3,
+  totalFrames: 18,
+  fps: 3,
+  loop: true,
+}
+
+const guluChaseConfig: AnimationDefinition = {
+  frameWidth: 512,
+  frameHeight: 512,
+  columns: 6,
+  rows: 3,
+  totalFrames: 18,
+  fps: 3,
   loop: true,
   timings: [
-    // Chase 1 – fast
     { frameIndex: 0, duration: 1000 / 12 },
     { frameIndex: 1, duration: 1000 / 12 },
     { frameIndex: 2, duration: 1000 / 12 },
     { frameIndex: 3, duration: 1000 / 12 },
     { frameIndex: 4, duration: 1000 / 12 },
     { frameIndex: 5, duration: 1000 / 12 },
-    // Fall – impact
     { frameIndex: 6, duration: 400 },
-    // Wake up – slower
     { frameIndex: 7, duration: 300 },
     { frameIndex: 8, duration: 300 },
-    // Chase 2 – fast again
     { frameIndex: 9, duration: 1000 / 12 },
     { frameIndex: 10, duration: 1000 / 12 },
     { frameIndex: 11, duration: 1000 / 12 },
     { frameIndex: 12, duration: 1000 / 12 },
     { frameIndex: 13, duration: 1000 / 12 },
-    // Slowing down – tired
     { frameIndex: 14, duration: 200 },
     { frameIndex: 15, duration: 300 },
-    // Exhausted – sigh, then loop back
     { frameIndex: 16, duration: 400 },
     { frameIndex: 17, duration: 1200 },
   ],
 }
 
-const defaultSleepConfig: AnimationDefinition = {
+const guluEatConfig: AnimationDefinition = {
   frameWidth: 512,
   frameHeight: 512,
-  columns: 4,
-  rows: 4,
-  totalFrames: 16,
-  fps: 6,
-  loop: true,
-}
-
-const defaultEatConfig: AnimationDefinition = {
-  frameWidth: 512,
-  frameHeight: 512,
-  columns: 5,
-  rows: 4,
-  totalFrames: 20,
-  fps: 12,
+  columns: 6,
+  rows: 3,
+  totalFrames: 18,
+  fps: 3,
   loop: true,
 }
 
 export const ANIMATION_CONFIGS: Record<CharacterId, AnimationConfig> = {
+  gulu: {
+    idle: guluIdleConfig,
+    walk: guluWalkConfig,
+    chase: guluChaseConfig,
+    eat: guluEatConfig,
+    sleep: guluIdleConfig,
+  },
   poro: {
-    idle: defaultIdleConfig,
-    chase: defaultChaseConfig,
-    sleep: defaultSleepConfig,
-    eat: defaultEatConfig,
+    idle: guluIdleConfig,
+    walk: guluWalkConfig,
+    chase: guluChaseConfig,
+    eat: guluEatConfig,
+    sleep: guluIdleConfig,
   },
   tomo: {
-    idle: defaultIdleConfig,
-    chase: defaultChaseConfig,
-    sleep: defaultSleepConfig,
-    eat: defaultEatConfig,
+    idle: guluIdleConfig,
+    walk: guluWalkConfig,
+    chase: guluChaseConfig,
+    eat: guluEatConfig,
+    sleep: guluIdleConfig,
   },
   bulu: {
-    idle: defaultIdleConfig,
-    chase: defaultChaseConfig,
-    sleep: defaultSleepConfig,
-    eat: defaultEatConfig,
-  },
-  gulu: {
-    idle: defaultIdleConfig,
-    chase: defaultChaseConfig,
-    sleep: defaultSleepConfig,
-    eat: defaultEatConfig,
+    idle: guluIdleConfig,
+    walk: guluWalkConfig,
+    chase: guluChaseConfig,
+    eat: guluEatConfig,
+    sleep: guluIdleConfig,
   },
 }
 
@@ -129,16 +132,38 @@ export const PROVIDER_ICONS: Record<string, string> = {
   google: '/images/avatars/providers/google.png',
   anthropic: '/images/avatars/providers/anthropic.png',
   groq: '/images/avatars/providers/groq.png',
+  ollama: '/images/avatars/providers/default.png',
+  custom: '/images/avatars/providers/default.png',
   default: '/images/avatars/providers/default.png',
 }
 
+// ─── Character specific animation & sprite sheets resolver ───────────────────
+
+/**
+ * Builds the sprite sheet path for a given character + animation.
+ * Each character resolves to its OWN folder (e.g. /images/animations/poro/walk.png).
+ */
 export function getSpriteSheetPath(character: CharacterId, animation: AnimationName): string {
-  if (character === 'gulu' && animation === 'idle') {
-    return `/images/animations/${character}/gulu.png`
-  }
-  return `/images/animations/${character}/${animation}.png`
+  const animFile = animation === 'sleep' ? 'idle' : animation
+  return `/images/animations/${character}/${animFile}.png`
+}
+
+/**
+ * Fallback sheet used by <SpriteSheetAnimation onError>. Falls back to GULU's
+ * sheet for the SAME animation (not always idle), so characters without their
+ * own art yet still play the correct animation — just with Gulu's art —
+ * instead of collapsing every action into idle.
+ */
+export function getFallbackSpriteSheetPath(character: CharacterId, animation: AnimationName): string {
+  const animFile = animation === 'sleep' ? 'idle' : animation
+  return `/images/animations/gulu/${animFile}.png`
 }
 
 export function getAnimationConfig(character: CharacterId, animation: AnimationName): AnimationDefinition {
-  return ANIMATION_CONFIGS[character]?.[animation] ?? ANIMATION_CONFIGS.poro[animation]
+  // Prefer this character's own config for this exact animation.
+  const own = ANIMATION_CONFIGS[character]?.[animation]
+  if (own) return own
+  // Fall back to Gulu's config for the SAME animation — not idle's shape —
+  // so the fallback frame dimensions actually match the fallback image above.
+  return ANIMATION_CONFIGS.gulu[animation] ?? guluIdleConfig
 }

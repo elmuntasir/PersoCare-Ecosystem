@@ -35,6 +35,7 @@ export async function switchActiveRole(role: SwitchableRole): Promise<{ ok: bool
   const dbUser = await prisma.user.findUnique({
     where: { authId: authUser.id },
     include: {
+      platformOwner: true,
       professions: {
         include: { professionType: true },
         where: { status: "VERIFIED" },
@@ -44,6 +45,17 @@ export async function switchActiveRole(role: SwitchableRole): Promise<{ ok: bool
   });
 
   if (!dbUser) return { ok: false, error: "User not found" };
+
+  // Platform owners can switch to and test any role without restrictions
+  if (dbUser.platformOwner) {
+    cookieStore.set(ACTIVE_ROLE_COOKIE, role, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return { ok: true };
+  }
 
   if (role === "admin") {
     const isAdmin =

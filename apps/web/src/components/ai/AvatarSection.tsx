@@ -5,12 +5,13 @@ import { CHARACTERS } from '@/lib/avatar/registry'
 import { FunAvatar } from '@/components/avatar/FunAvatar'
 import { PROVIDER_ICONS } from '@/lib/avatar/registry'
 import type { AnimationName } from '@/types/avatar'
-import { Sparkles, User as UserIcon } from 'lucide-react'
+import { Sparkles, User as UserIcon, MessageCircle } from 'lucide-react'
 
-const ANIMATIONS: AnimationName[] = ['idle', 'chase', 'sleep', 'eat']
+const ANIMATIONS: AnimationName[] = ['idle', 'walk', 'chase', 'sleep', 'eat']
 
 const ANIMATION_LABELS: Record<AnimationName, string> = {
   idle: '😌 Idle',
+  walk: '🚶 Walk',
   chase: '🏃 Chase',
   sleep: '😴 Sleep',
   eat: '🍴 Eat',
@@ -22,7 +23,18 @@ interface AvatarSectionProps {
 }
 
 export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
-  const { mode, setMode, character, setCharacter, animation, setAnimation, providers } = useAvatar()
+  const {
+    mode,
+    setMode,
+    character,
+    setCharacter,
+    animation,
+    setAnimation,
+    providers,
+    chatbot,
+    activateChat,
+    toggleChat,
+  } = useAvatar()
 
   return (
     <div className="bg-white rounded-3xl border border-[var(--sage-200)] p-6 md:p-8 shadow-xs space-y-6">
@@ -50,7 +62,7 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
           <button
             type="button"
             onClick={() => setMode('default')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold font-body transition-all ${
+            className={`px-4 py-1.5 rounded-xl text-xs font-semibold font-body transition-all cursor-pointer ${
               mode === 'default'
                 ? 'bg-[var(--teal-900)] text-white shadow-xs'
                 : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
@@ -61,7 +73,7 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
           <button
             type="button"
             onClick={() => setMode('fun')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold font-body transition-all flex items-center gap-1 ${
+            className={`px-4 py-1.5 rounded-xl text-xs font-semibold font-body transition-all flex items-center gap-1 cursor-pointer ${
               mode === 'fun'
                 ? 'bg-[var(--teal-900)] text-white shadow-xs'
                 : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
@@ -138,7 +150,7 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
       ) : (
         <div className="space-y-6">
           <div className="flex flex-col items-center gap-5 p-6 rounded-2xl bg-[var(--paper)] border border-[var(--sage-200)]">
-            <FunAvatar className="w-36 h-36" />
+            <FunAvatar className="w-44 h-44" />
 
             {/* Animation Selector */}
             <div className="flex flex-wrap gap-2 justify-center">
@@ -147,7 +159,7 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
                   key={a}
                   type="button"
                   onClick={() => setAnimation(a)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
                     animation === a
                       ? 'bg-[var(--teal-900)] text-white border-transparent shadow-xs'
                       : 'border-[var(--sage-200)] bg-white text-[var(--ink-soft)] hover:border-[var(--teal-900)] hover:text-[var(--teal-900)]'
@@ -178,7 +190,13 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
                         : 'border-[var(--sage-200)] bg-white hover:border-[var(--teal-900)]/40 hover:bg-[var(--paper)]'
                     }`}
                   >
-                    <span className="text-2xl block mb-1">{c.emoji}</span>
+                    {c.avatarImage ? (
+                      <div className="w-9 h-9 mx-auto mb-1 flex items-center justify-center">
+                        <img src={c.avatarImage} alt={c.name} className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <span className="text-2xl block mb-1">{c.emoji}</span>
+                    )}
                     <p className="text-xs font-bold text-[var(--ink)] leading-tight">{c.name}</p>
                     <p className="text-[10px] text-[var(--ink-soft)] line-clamp-1 mt-0.5">{c.description}</p>
                     {isActive && (
@@ -193,6 +211,39 @@ export function AvatarSection({ userAvatar, username }: AvatarSectionProps) {
           </div>
         </div>
       )}
+
+      {/* Floating Chat Assistant Activation Card */}
+      <div className="p-5 rounded-2xl bg-[var(--paper)] border border-[var(--sage-200)] flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[var(--teal-900)] text-white flex items-center justify-center shrink-0">
+            <MessageCircle className="w-5 h-5" strokeWidth={1.8} />
+          </div>
+          <div>
+            <h4 className="font-display font-semibold text-sm text-[var(--teal-900)]">
+              Floating AI Assistant
+            </h4>
+            <p className="text-xs text-[var(--ink-soft)] font-body mt-0.5">
+              {chatbot.hasBeenActivated
+                ? 'Your AI assistant is active! Click the floating button at bottom right anytime.'
+                : 'Activate the floating chatbot to access assistant advice across all pages.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={chatbot.hasBeenActivated ? toggleChat : activateChat}
+            className={`px-5 py-2 rounded-full text-xs font-semibold font-body flex items-center gap-2 transition-all cursor-pointer shadow-xs ${
+              chatbot.hasBeenActivated
+                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                : 'bg-[var(--coral)] text-white hover:bg-[var(--coral)]/90'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5" strokeWidth={2} />
+            <span>{chatbot.hasBeenActivated ? (chatbot.isOpen ? 'Close Chat' : 'Open Chat') : 'Activate Chat'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

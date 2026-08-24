@@ -93,37 +93,30 @@ const getDashboardUserOrNull = cache(async (): Promise<DashboardUser | null> => 
   }
 
   // ── Apply cookie-based role override (from profile role-switcher) ─────────
-  // Platform owners cannot be overridden — they always stay platform_owner.
-  if (primaryRole.kind !== "platform_owner") {
-    const cookieStore = await cookies();
-    const cookieRole = cookieStore.get(ACTIVE_ROLE_COOKIE)?.value as SwitchableRole | undefined;
+  const cookieRole = cookieStore.get(ACTIVE_ROLE_COOKIE)?.value as SwitchableRole | undefined;
 
-    if (cookieRole && cookieRole !== "user") {
-      // Verify the override is still valid before applying
-      const isAdmin = cookieRole === "admin" && user.adminRoles.length > 0;
-      const isProfession =
-        cookieRole !== "admin" &&
-        user.professions.some(
-          (p) => p.professionType.code.toLowerCase() === cookieRole.toLowerCase()
-        );
-
-      if (isAdmin) {
-        const a = user.adminRoles[0];
-        primaryRole = {
-          kind: "org_role",
-          label: a.isPrimaryAdmin ? "Primary Admin" : "Admin",
-          organizationName: a.organization.name,
-        };
-      } else if (isProfession) {
-        const prof = user.professions.find(
-          (p) => p.professionType.code.toLowerCase() === cookieRole.toLowerCase()
-        )!;
-        primaryRole = { kind: "profession", label: prof.professionType.name };
-      }
-      // If neither matched, the cookie is stale — fall through to DB default
-    } else if (cookieRole === "user") {
-      // Explicit switch back to plain user
+  if (cookieRole) {
+    if (cookieRole === "user") {
       primaryRole = { kind: "user", label: "" };
+    } else if (cookieRole === "admin") {
+      const a = user.adminRoles[0];
+      primaryRole = {
+        kind: "org_role",
+        label: a?.isPrimaryAdmin ? "Primary Admin" : "Admin",
+        organizationName: a?.organization?.name || "Organization",
+      };
+    } else if (["doctor", "physiotherapist", "radiologist"].includes(cookieRole)) {
+      const prof = user.professions.find(
+        (p) => p.professionType.code.toLowerCase() === cookieRole.toLowerCase()
+      );
+      const roleLabel =
+        prof?.professionType.name ||
+        (cookieRole === "doctor"
+          ? "Doctor"
+          : cookieRole === "physiotherapist"
+          ? "Physiotherapist"
+          : "Radiologist");
+      primaryRole = { kind: "profession", label: roleLabel };
     }
   }
 

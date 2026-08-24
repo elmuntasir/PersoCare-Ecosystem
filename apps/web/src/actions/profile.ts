@@ -58,6 +58,7 @@ export type ProfileData = {
       name: string;
     };
   }>;
+  isPlatformOwner?: boolean;
   activeRole: string;
   conditions: Array<{
     title: string;
@@ -89,6 +90,7 @@ export async function getProfileData(): Promise<ProfileData> {
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
     include: {
+      platformOwner: true,
       patientProfile: true,
       adminRoles: {
         where: { isActive: true },
@@ -152,6 +154,7 @@ export async function getProfileData(): Promise<ProfileData> {
     gender: profile.gender,
     username: profile.username,
     patientProfile,
+    isPlatformOwner: Boolean(profile.platformOwner),
     activeRole: activeRoleCookie,
     adminRoles: profile.adminRoles.map((a) => ({
       id: a.id,

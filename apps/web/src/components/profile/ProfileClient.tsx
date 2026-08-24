@@ -22,6 +22,7 @@ import { EditHealthModal } from "./EditHealthModal";
 import { applyForProfessionBypass } from "@/actions/admin/applyForAdmin";
 import { switchActiveRole } from "@/actions/switchRole";
 import { type SwitchableRole } from "@/lib/auth-constants";
+import { useRole, ROLE_SWITCH_OUT_MS } from "@/contexts/RoleContext";
 
 interface ProfileClientProps {
   initialData: ProfileData;
@@ -72,7 +73,9 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
 
   // Check if user has a verified profession of the given role
   // 'user' always passes — it's the base role with no profession requirement.
+  // Platform owners can switch to any role directly to inspect and manage views.
   const hasVerifiedProfession = (roleCode: SwitchableRole) => {
+    if (data.isPlatformOwner) return true;
     if (roleCode === "user") return true;
     if (roleCode === "admin") {
       const hasAdminRole = (data.adminRoles?.length || 0) > 0;
@@ -155,15 +158,15 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
         </div>
 
         {/* Switch Profile Role Dropdown */}
-        <div className="flex items-center gap-2 bg-[var(--paper)] p-1.5 rounded-xl border border-[var(--sage-200)]">
-          <span className="text-xs font-mono text-[var(--ink-soft)] px-2">Switch Profile:</span>
+        <div className="flex items-center gap-3 bg-[var(--paper)] p-2 rounded-2xl border border-[var(--sage-200)]">
+          <span className="text-xs font-mono text-[var(--ink-soft)] px-1">Switch Profile:</span>
           <div className="relative">
             <select
               value={selectedRole}
               disabled={isSwitching}
               onChange={(e) => handleRoleSwitch(e.target.value as SwitchableRole)}
-              className={`appearance-none bg-white text-[var(--teal-900)] font-body text-xs font-semibold px-3 py-1.5 pr-8 rounded-lg border border-[var(--sage-200)] shadow-2xs hover:border-[var(--coral)] focus:outline-hidden cursor-pointer transition-opacity ${
-                isSwitching ? "opacity-50 cursor-not-allowed" : ""
+              className={`appearance-none bg-white text-[var(--teal-900)] font-body text-xs font-semibold px-3.5 py-2 pr-8 rounded-xl border border-[var(--sage-200)] shadow-2xs hover:border-[var(--coral)] focus:outline-hidden cursor-pointer transition-all duration-300 ${
+                isSwitching ? "opacity-50 scale-95 cursor-not-allowed" : ""
               }`}
             >
               {ROLES.map((r) => {
@@ -176,6 +179,13 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
               })}
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)] pointer-events-none" />
+          </div>
+          <div
+            className={`text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-[var(--teal-900)] text-white font-semibold shadow-2xs transition-all duration-300 ${
+              isSwitching ? "opacity-50 scale-95" : ""
+            }`}
+          >
+            {roleDisplayName(selectedRole)}
           </div>
         </div>
       </div>

@@ -2,11 +2,19 @@
 
 import { ReactNode } from 'react'
 import { AvatarProvider } from '@/contexts/AvatarContext'
+import { RoleProvider } from '@/contexts/RoleContext'
+import { FloatingChatButton } from '@/components/chat/FloatingChatButton'
 
 /**
  * Thin client boundary that wraps all app-level providers.
- * Add future providers here (e.g. ThemeProvider, QueryClientProvider).
  */
 export function Providers({ children }: { children: ReactNode }) {
-  return <AvatarProvider>{children}</AvatarProvider>
+  return (
+    <AvatarProvider>
+      <RoleProvider>
+        {children}
+        <FloatingChatButton />
+      </RoleProvider>
+    </AvatarProvider>
+  )
 }

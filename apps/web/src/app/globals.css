@@ -99,3 +99,69 @@ select:focus-visible {
   background: #94a3b8;
 }
 
+/* ─── Role Switching Animations ──────────────────────────── */
+/* Main page animation is handled by Framer Motion (PageTransitionWrapper).
+   These CSS classes add extra polish to the sidebar items during the switch. */
+
+@keyframes roleSwitchIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.role-switch-in {
+  animation: roleSwitchIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes roleSwitchOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(4px);
+  }
+}
+
+.role-switch-out {
+  animation: roleSwitchOut 0.2s ease-in forwards;
+}
+
+/* Sidebar item hover scaling */
+.sidebar-item {
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-item:hover {
+  transform: translateX(4px);
+}
+
+.sidebar-item.active {
+  transform: scale(1.02);
+}
+
+
+
+/* ── Floating chat button pulse ring ──────────────────────────── */
+.pulse-ring {
+  transition: none;
+}
+
+.pulse-ring.pulse-active {
+  animation: chatPulse 0.9s ease-out forwards;
+}
+
+@keyframes chatPulse {
+  0%   { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}

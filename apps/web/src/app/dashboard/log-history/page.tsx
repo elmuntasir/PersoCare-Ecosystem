@@ -19,6 +19,7 @@ const CATEGORY_ICON: Record<string, string> = {
   Exercise: "🏃",
   Medicine: "💊",
   "Health Diary": "📝",
+  "Metabolic Risk": "🩺",
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -122,7 +123,7 @@ export default function LogHistoryPage() {
           <div className="flex items-center gap-2">
             <span className="font-body text-sm font-medium text-[var(--ink)]">Category:</span>
             <div className="flex rounded-full overflow-hidden border border-[var(--sage-200)] flex-wrap">
-              {(["all", "diet", "exercise", "medicine", "health_diary"] as const).map((c) => (
+              {(["all", "diet", "exercise", "medicine", "health_diary", "metabolicRisk"] as const).map((c) => (
                 <button
                   key={c}
                   onClick={() => handleFilterChange(filter, c)}
@@ -130,7 +131,11 @@ export default function LogHistoryPage() {
                     category === c ? "bg-[var(--teal-900)] text-white" : "bg-white text-[var(--ink-soft)] hover:bg-[var(--sage-200)]"
                   }`}
                 >
-                  {c === "health_diary" ? "Health Diary" : c}
+                  {c === "health_diary"
+                    ? "Health Diary"
+                    : c === "metabolicRisk"
+                      ? "Metabolic Risk"
+                      : c}
                 </button>
               ))}
             </div>

@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   Heart,
   Boxes,
+  Activity,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { DashboardRole, DashboardUser } from "@/lib/get-current-dashboard-user";
@@ -79,6 +80,15 @@ const NAV_MAP: Record<DashboardRole["kind"], NavItem[]> = {
       color: "text-rose-400",
       bgColor: "bg-rose-500/10",
       match: (pathname) => pathname === "/dashboard/medicine",
+    },
+    {
+      id: "nav-metabolic-risk",
+      href: "/dashboard/metabolic-risk",
+      label: "Metabolic Risk Calculator",
+      icon: Activity,
+      color: "text-orange-400",
+      bgColor: "bg-orange-500/10",
+      match: (pathname) => pathname === "/dashboard/metabolic-risk",
     },
     {
       id: "nav-log-history",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface FrameTiming {
   frameIndex: number
@@ -9,6 +9,8 @@ interface FrameTiming {
 
 interface SpriteSheetAnimationProps {
   spriteSheetUrl: string
+  fallbackUrl?: string
+  /** Source frame size – kept for API compat, not used in CSS sprite rendering */
   frameWidth: number
   frameHeight: number
   columns: number
@@ -23,13 +25,24 @@ interface SpriteSheetAnimationProps {
   onClick?: () => void
 }
 
+/**
+ * Renders a sprite-sheet animation using CSS background-image + background-position.
+ * This avoids all canvas sizing / object-fit issues and is GPU-accelerated.
+ *
+ * background-size trick:
+ *   `${cols * 100}% ${rows * 100}%` scales the sheet so that exactly one frame
+ *   fits inside the container, regardless of container size.
+ *
+ * background-position trick:
+ *   `${col/(cols-1)*100}% ${row/(rows-1)*100}%` selects the correct frame cell.
+ */
 export function SpriteSheetAnimation({
   spriteSheetUrl,
-  frameWidth,
-  frameHeight,
+  fallbackUrl,
   columns,
-  fps = 10,
+  rows,
   totalFrames,
+  fps = 10,
   loop = true,
   timings,
   className = '',
@@ -37,105 +50,95 @@ export function SpriteSheetAnimation({
   onComplete,
   onClick,
 }: SpriteSheetAnimationProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imageRef = useRef<HTMLImageElement | null>(null)
-  const playingRef = useRef(autoplay)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const divRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number | null>(null)
 
-  const drawFrame = useCallback(
-    (frameIndex: number) => {
-      const canvas = canvasRef.current
-      const img = imageRef.current
-      if (!canvas || !img) return
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      const col = frameIndex % columns
-      const row = Math.floor(frameIndex / columns)
-      ctx.clearRect(0, 0, frameWidth, frameHeight)
-      ctx.drawImage(
-        img,
-        col * frameWidth,
-        row * frameHeight,
-        frameWidth,
-        frameHeight,
-        0,
-        0,
-        frameWidth,
-        frameHeight
-      )
-    },
-    [columns, frameWidth, frameHeight]
-  )
-
-  // Load sprite sheet image
   useEffect(() => {
-    const img = new Image()
-    img.src = spriteSheetUrl
-    img.onload = () => {
-      imageRef.current = img
-      drawFrame(0)
+    const div = divRef.current
+    if (!div) return
+
+    // Apply background-size once — scales full sheet so one frame = container
+    div.style.backgroundSize = `${columns * 100}% ${rows * 100}%`
+    div.style.backgroundRepeat = 'no-repeat'
+
+    // Try primary url; fall back on error
+    let currentUrl = spriteSheetUrl
+    const applyUrl = (url: string) => {
+      div.style.backgroundImage = `url("${url}")`
     }
-    img.onerror = () =>
-      console.warn('[SpriteSheetAnimation] Failed to load sprite sheet:', spriteSheetUrl)
+    applyUrl(currentUrl)
 
-    return () => {
-      imageRef.current = null
-    }
-  }, [spriteSheetUrl, drawFrame])
-
-  // Animation loop
-  useEffect(() => {
-    if (!playingRef.current || totalFrames === 0) return
-
-    let frameIndex = 0
-
-    const tick = () => {
-      drawFrame(frameIndex)
-
-      const duration = timings?.find((t) => t.frameIndex === frameIndex)?.duration ?? 1000 / fps
-
-      frameIndex++
-
-      if (frameIndex >= totalFrames) {
-        if (loop) {
-          frameIndex = 0
-          timeoutRef.current = setTimeout(tick, duration)
-        } else {
-          playingRef.current = false
-          onComplete?.()
-        }
-      } else {
-        timeoutRef.current = setTimeout(tick, duration)
+    const checkFallback = () => {
+      if (fallbackUrl && currentUrl !== fallbackUrl) {
+        currentUrl = fallbackUrl
+        applyUrl(fallbackUrl)
       }
     }
 
-    timeoutRef.current = setTimeout(tick, 1000 / fps)
+    const probe = new Image()
+    probe.onerror = checkFallback
+    probe.src = currentUrl
+
+    const setFrame = (idx: number) => {
+      const col = idx % columns
+      const row = Math.floor(idx / columns)
+      const xPct = columns > 1 ? (col / (columns - 1)) * 100 : 0
+      const yPct = rows > 1 ? (row / (rows - 1)) * 100 : 0
+      div.style.backgroundPosition = `${xPct.toFixed(4)}% ${yPct.toFixed(4)}%`
+    }
+
+    setFrame(0) // always show frame 0 immediately
+
+    if (!autoplay || totalFrames <= 1) return
+
+    let frameIndex = 0
+    let lastTime = 0
+
+    const getFrameDuration = (idx: number) =>
+      timings?.find((t) => t.frameIndex === idx)?.duration ?? 1000 / fps
+
+    const tick = (ts: number) => {
+      if (lastTime === 0) lastTime = ts
+      const elapsed = ts - lastTime
+      const duration = getFrameDuration(frameIndex)
+
+      if (elapsed >= duration) {
+        lastTime = ts - (elapsed % duration)
+        frameIndex++
+
+        if (frameIndex >= totalFrames) {
+          if (loop) {
+            frameIndex = 0
+          } else {
+            setFrame(totalFrames - 1)
+            onComplete?.()
+            return // stop RAF
+          }
+        }
+
+        setFrame(frameIndex)
+      }
+
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      probe.onerror = null
     }
-    // Re-run when core animation params change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spriteSheetUrl, totalFrames, fps, loop, timings, drawFrame])
-
-  const handleClick = onClick ?? (() => {
-    playingRef.current = !playingRef.current
-  })
+  }, [spriteSheetUrl, fallbackUrl, columns, rows, totalFrames, fps, loop, timings, autoplay, onComplete])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={frameWidth}
-      height={frameHeight}
+    <div
+      ref={divRef}
       className={className}
-      onClick={handleClick}
+      onClick={onClick}
       style={{
-        imageRendering: 'pixelated',
-        maxWidth: '100%',
-        height: 'auto',
-        cursor: 'pointer',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: `${columns * 100}% ${rows * 100}%`,
+        backgroundPosition: '0% 0%',
       }}
     />
   )

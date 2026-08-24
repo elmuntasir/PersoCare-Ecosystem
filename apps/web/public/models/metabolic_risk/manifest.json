@@ -1,0 +1,233 @@
+{
+  "labels": [
+    "HighBodyFat_BMI",
+    "Low_HDL",
+    "Diabetes",
+    "NAFLD",
+    "Hypertension",
+    "InsulinResistance",
+    "MetSyn"
+  ],
+  "thresholds": {
+    "HighBodyFat_BMI": 0.46,
+    "Low_HDL": 0.40,
+    "Diabetes": 0.38,
+    "NAFLD": 0.30,
+    "Hypertension": 0.43,
+    "InsulinResistance": 0.32,
+    "MetSyn": 0.48
+  },
+  "preprocessing": {
+    "medians": {
+      "Gender": 2,
+      "Age": 45,
+      "BMI": 27.5,
+      "Waist": 95,
+      "Height": 168,
+      "WHtR": 0.56,
+      "Triglycerides": 130,
+      "HDL": 52,
+      "LDL": 110,
+      "VAI": 2.1,
+      "LAP": 35,
+      "Glucose": 98,
+      "HbA1c": 5.6,
+      "Insulin": 12,
+      "HOMA_IR": 2.8,
+      "TyG": 8.6,
+      "Systolic_BP": 122,
+      "Diastolic_BP": 78,
+      "ALT": 22,
+      "AST": 20,
+      "Liver_Fat": 260
+    },
+    "winsor_bounds": {
+      "Triglycerides": [40, 400],
+      "Insulin": [2, 40],
+      "VAI": [0.5, 8],
+      "LAP": [0, 120],
+      "HOMA_IR": [0.3, 15],
+      "TyG": [7.5, 10.5]
+    },
+    "scaler_mean": {
+      "Gender": 1.5,
+      "Age": 45,
+      "BMI": 27.5,
+      "Waist": 95,
+      "Height": 168,
+      "WHtR": 0.56,
+      "Triglycerides": 130,
+      "HDL": 52,
+      "LDL": 110,
+      "VAI": 2.1,
+      "LAP": 35,
+      "Glucose": 98,
+      "HbA1c": 5.6,
+      "Insulin": 12,
+      "HOMA_IR": 2.8,
+      "TyG": 8.6,
+      "Systolic_BP": 122,
+      "Diastolic_BP": 78,
+      "ALT": 22,
+      "AST": 20,
+      "Liver_Fat": 260
+    },
+    "scaler_std": {
+      "Gender": 0.5,
+      "Age": 15,
+      "BMI": 5.5,
+      "Waist": 15,
+      "Height": 10,
+      "WHtR": 0.08,
+      "Triglycerides": 70,
+      "HDL": 15,
+      "LDL": 35,
+      "VAI": 1.2,
+      "LAP": 25,
+      "Glucose": 25,
+      "HbA1c": 0.8,
+      "Insulin": 8,
+      "HOMA_IR": 2.5,
+      "TyG": 0.6,
+      "Systolic_BP": 18,
+      "Diastolic_BP": 12,
+      "ALT": 15,
+      "AST": 12,
+      "Liver_Fat": 80
+    }
+  },
+  "tiers": {
+    "T0": {
+      "features": ["Gender", "Age", "BMI", "Waist", "Height", "WHtR"],
+      "thresholds": {
+        "HighBodyFat_BMI": 0.45,
+        "Low_HDL": 0.42,
+        "Diabetes": 0.38,
+        "NAFLD": 0.40,
+        "Hypertension": 0.44,
+        "InsulinResistance": 0.41,
+        "MetSyn": 0.43
+      }
+    },
+    "T1": {
+      "features": [
+        "Gender",
+        "Age",
+        "BMI",
+        "Waist",
+        "Height",
+        "WHtR",
+        "Triglycerides",
+        "HDL",
+        "LDL",
+        "VAI",
+        "LAP"
+      ],
+      "thresholds": {
+        "HighBodyFat_BMI": 0.44,
+        "Low_HDL": 0.40,
+        "Diabetes": 0.37,
+        "NAFLD": 0.39,
+        "Hypertension": 0.43,
+        "InsulinResistance": 0.40,
+        "MetSyn": 0.42
+      }
+    },
+    "T2": {
+      "features": [
+        "Gender",
+        "Age",
+        "BMI",
+        "Waist",
+        "Height",
+        "WHtR",
+        "Triglycerides",
+        "HDL",
+        "LDL",
+        "VAI",
+        "LAP",
+        "Glucose",
+        "HbA1c",
+        "Insulin",
+        "HOMA_IR",
+        "TyG"
+      ],
+      "thresholds": {
+        "HighBodyFat_BMI": 0.43,
+        "Low_HDL": 0.39,
+        "Diabetes": 0.36,
+        "NAFLD": 0.38,
+        "Hypertension": 0.42,
+        "InsulinResistance": 0.39,
+        "MetSyn": 0.41
+      }
+    },
+    "T3": {
+      "features": [
+        "Gender",
+        "Age",
+        "BMI",
+        "Waist",
+        "Height",
+        "WHtR",
+        "Triglycerides",
+        "HDL",
+        "LDL",
+        "VAI",
+        "LAP",
+        "Glucose",
+        "HbA1c",
+        "Insulin",
+        "HOMA_IR",
+        "TyG",
+        "Systolic_BP",
+        "Diastolic_BP",
+        "ALT",
+        "AST"
+      ],
+      "thresholds": {
+        "HighBodyFat_BMI": 0.42,
+        "Low_HDL": 0.38,
+        "Diabetes": 0.35,
+        "NAFLD": 0.37,
+        "Hypertension": 0.41,
+        "InsulinResistance": 0.38,
+        "MetSyn": 0.40
+      }
+    },
+    "T4": {
+      "features": [
+        "Gender",
+        "Age",
+        "BMI",
+        "Waist",
+        "Height",
+        "WHtR",
+        "Triglycerides",
+        "HDL",
+        "LDL",
+        "VAI",
+        "LAP",
+        "Glucose",
+        "HbA1c",
+        "Insulin",
+        "HOMA_IR",
+        "TyG",
+        "Systolic_BP",
+        "Diastolic_BP",
+        "ALT",
+        "AST",
+        "Liver_Fat"
+      ],
+      "thresholds": {
+        "HighBodyFat_BMI": 0.41,
+        "Low_HDL": 0.37,
+        "Diabetes": 0.34,
+        "NAFLD": 0.36,
+        "Hypertension": 0.40,
+        "InsulinResistance": 0.37,
+        "MetSyn": 0.39
+      }
+    }
+  }
+}
