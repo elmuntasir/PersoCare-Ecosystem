@@ -1,7 +1,7 @@
 {
   "name": "persocare-ecosystem",
   "private": true,
-  "packageManager": "pnpm@10.16.0",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
@@ -20,4 +20,6 @@
     "@types/pg": "^8.21.0",
     "pg": "^8.23.0"
   }
+
+
 }
