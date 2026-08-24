@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 
-const WORKFLOW_ID = "aaacb3cf-2157-499b-a809-2ffc5f4daf98"; // KYC+AML workflow
+const WORKFLOW_ID = "56c41d5d-04de-4b06-92eb-ce5fb1d951b8"; // Free KYC workflow
 
 export async function createDiditSession() {
   const user = await getSessionUser();

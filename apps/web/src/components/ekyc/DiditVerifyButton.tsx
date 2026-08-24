@@ -3,8 +3,21 @@
 import { useState } from "react";
 import { DiditSdk } from "@didit-protocol/sdk-web";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 
-export function DiditVerifyButton() {
+type DiditVerifyButtonProps = {
+  label?: string;
+  showHint?: boolean;
+  className?: string;
+  onComplete?: () => void;
+};
+
+export function DiditVerifyButton({
+  label = "Verify Identity with NID",
+  showHint = true,
+  className,
+  onComplete,
+}: DiditVerifyButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +34,7 @@ export function DiditVerifyButton() {
       DiditSdk.shared.onComplete = (result) => {
         console.log("Verification flow completed:", result);
         setLoading(false);
+        onComplete?.();
         router.refresh();
       };
 
@@ -42,13 +56,19 @@ export function DiditVerifyButton() {
         type="button"
         onClick={startVerification}
         disabled={loading}
-        className="px-6 py-3 rounded-full bg-[var(--coral)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
+        className={
+          className ??
+          "inline-flex items-center gap-1.5 px-6 py-3 rounded-full bg-[var(--coral)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer"
+        }
       >
-        {loading ? "Starting..." : "Verify Identity with NID"}
+        <Sparkles className="w-4 h-4" />
+        {loading ? "Starting..." : label}
       </button>
-      <p className="text-xs text-[var(--ink-soft)] mt-2">
-        You will be redirected to Didit to take a selfie and capture your NID card.
-      </p>
+      {showHint && (
+        <p className="text-xs text-[var(--ink-soft)] mt-2">
+          You will open Didit to take a selfie and capture your NID card.
+        </p>
+      )}
     </div>
   );
 }

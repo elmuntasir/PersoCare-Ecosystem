@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileData } from "@/actions/profile";
 import {
@@ -20,7 +20,6 @@ import { format, parseISO } from "date-fns";
 import { EditPersonalModal } from "./EditPersonalModal";
 import { EditHealthModal } from "./EditHealthModal";
 import { DiditVerifyButton } from "@/components/ekyc/DiditVerifyButton";
-import { applyForProfessionBypass } from "@/actions/admin/applyForAdmin";
 import { switchActiveRole } from "@/actions/switchRole";
 import { type SwitchableRole } from "@/lib/auth-constants";
 import { useRole, ROLE_SWITCH_OUT_MS } from "@/contexts/RoleContext";
@@ -41,7 +40,7 @@ const ROLES: Array<{ value: SwitchableRole; label: string }> = [
 type TabType = "personal" | "health" | "professional";
 
 export function ProfileClient({ initialData }: ProfileClientProps) {
-  const [data] = useState(initialData);
+  const [data, setData] = useState(initialData);
   const [activeTab, setActiveTab] = useState<TabType>("personal");
   const [selectedRole, setSelectedRole] = useState<SwitchableRole>(() => {
     return (initialData.activeRole as SwitchableRole) || "user";
@@ -50,34 +49,14 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
   const [pendingRole, setPendingRole] = useState<string | null>(null);
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
-  const [isBypassing, setIsBypassing] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const router = useRouter();
 
-  const isIdentityVerified = data.identityVerification?.status === "APPROVED";
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
-  const handleBypass = async () => {
-    if (!pendingRole) return;
-    if (!isIdentityVerified) {
-      setActiveTab("professional");
-      setShowEKYCWarning(false);
-      return;
-    }
-    setIsBypassing(true);
-    try {
-      await applyForProfessionBypass(pendingRole);
-      // After verifying, immediately switch to the bypassed role
-      await switchActiveRole(pendingRole as SwitchableRole);
-      setSelectedRole(pendingRole as SwitchableRole);
-      setShowEKYCWarning(false);
-      setPendingRole(null);
-      router.refresh();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsBypassing(false);
-    }
-  };
+  const isIdentityVerified = data.identityVerification?.status === "APPROVED";
 
   // Check if user has a verified profession of the given role
   // 'user' always passes — it's the base role with no profession requirement.
@@ -328,27 +307,24 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
               </button>
             </div>
 
-            <p className="font-body text-sm text-[var(--ink-soft)] mb-4 leading-relaxed">
+            <p className="font-body text-sm text-[var(--ink-soft)] mb-5 leading-relaxed">
               To switch your active authority to{" "}
               <strong className="text-[var(--teal-900)] font-semibold">
                 {roleDisplayName(pendingRole || "")}
               </strong>
-              , you need to complete identity verification (Didit eKYC) and credential validation for this profession.
+              , you need to complete identity verification (Didit eKYC) and credential validation for
+              this profession.
             </p>
 
-            {!isIdentityVerified && (
-              <div className="mb-5 p-3 rounded-xl bg-[var(--paper)] border border-[var(--sage-200)]">
-                <p className="text-xs font-body text-[var(--ink-soft)] mb-3">
-                  Start with NID + selfie verification. After approval, you can apply for the professional role.
-                </p>
-                <DiditVerifyButton />
-              </div>
-            )}
-
-            {isIdentityVerified && (
+            {isIdentityVerified ? (
               <p className="text-sm text-emerald-600 flex items-center gap-1.5 mb-5">
                 <CheckCircle className="w-4 h-4" strokeWidth={1.6} />
-                Identity verified — you can continue with professional credentials.
+                Identity verified. Open the Professional tab to finish credential validation.
+              </p>
+            ) : (
+              <p className="text-xs font-body text-[var(--ink-soft)] mb-4">
+                Proceed to open Didit for NID + selfie verification. After approval, return here to
+                apply for the role.
               </p>
             )}
 
@@ -361,28 +337,26 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
                 Cancel
               </button>
 
-              {/* Test bypass: profession credentials only (identity must already be verified) */}
-              <button
-                type="button"
-                onClick={handleBypass}
-                disabled={isBypassing || !isIdentityVerified}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                {isBypassing ? "Verifying..." : "Done / Bypass (Test)"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("professional");
-                  closeModal();
-                }}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--coral)] text-white text-sm font-medium hover:opacity-90 shadow-sm transition-opacity cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                Go to Professional Tab
-              </button>
+              {isIdentityVerified ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("professional");
+                    closeModal();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--coral)] text-white text-sm font-medium hover:opacity-90 shadow-sm transition-opacity cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Go to Professional Tab
+                </button>
+              ) : (
+                <DiditVerifyButton
+                  label="Proceed to eKYC"
+                  showHint={false}
+                  onComplete={closeModal}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--coral)] text-white text-sm font-medium hover:opacity-90 shadow-sm transition-opacity cursor-pointer disabled:opacity-60"
+                />
+              )}
             </div>
           </div>
         </div>
