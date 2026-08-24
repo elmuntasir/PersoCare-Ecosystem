@@ -66,6 +66,13 @@ export type ProfileData = {
     occurredAt: string | null;
     status: string;
   }>;
+  identityVerification: {
+    status: string;
+    verifiedAt: string | null;
+    documentNumber: string | null;
+    livenessScore: number | null;
+    faceMatchScore: number | null;
+  } | null;
 };
 
 async function getAuthUser() {
@@ -92,6 +99,7 @@ export async function getProfileData(): Promise<ProfileData> {
     include: {
       platformOwner: true,
       patientProfile: true,
+      verification: true,
       adminRoles: {
         where: { isActive: true },
         include: { organization: true },
@@ -201,5 +209,16 @@ export async function getProfileData(): Promise<ProfileData> {
       occurredAt: c.occurredAt ? c.occurredAt.toISOString() : null,
       status: c.status,
     })),
+    identityVerification: profile.verification
+      ? {
+          status: profile.verification.status,
+          verifiedAt: profile.verification.verifiedAt
+            ? profile.verification.verifiedAt.toISOString()
+            : null,
+          documentNumber: profile.verification.documentNumber,
+          livenessScore: profile.verification.livenessScore,
+          faceMatchScore: profile.verification.faceMatchScore,
+        }
+      : null,
   };
 }

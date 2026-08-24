@@ -89,6 +89,7 @@ model User {
   auditLogs                  SystemAuditLog[]
   chatMessages               ChatMessage[]               @relation("UserChatMessages")
   metabolicRiskAssessments   MetabolicRiskAssessment[]
+  verification               Verification?
 }
 
 model MetabolicRiskAssessment {
@@ -101,6 +102,28 @@ model MetabolicRiskAssessment {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([createdAt])
+}
+
+// Didit eKYC identity verification (one record per user)
+model Verification {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       String    @default("DIDIT")
+  status         String // "PENDING", "APPROVED", "DECLINED", "IN_REVIEW", "EXPIRED"
+  decision       Json? // Full Didit decision JSON
+  livenessScore  Float?
+  faceMatchScore Float?
+  documentNumber String?
+  extractedData  Json?
+  lastEventId    String? // Webhook idempotency
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  verifiedAt     DateTime?
+  expiresAt      DateTime?
+
+  @@index([status])
   @@index([createdAt])
 }
 

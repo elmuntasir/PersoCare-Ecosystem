@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { isUserVerified } from "@/actions/ekyc/didit";
 
 async function getAuthUser() {
   try {
@@ -52,14 +53,42 @@ const PROFESSION_DEFAULTS: Record<
 };
 
 /**
+ * Apply for a professional role. Requires Didit identity verification first.
+ */
+export async function applyForProfession(roleCode: string) {
+  const user = await getAuthUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const verified = await isUserVerified();
+  if (!verified) {
+    throw new Error("You must verify your identity before applying for a professional role.");
+  }
+
+  return upsertProfession(user.id, roleCode, "PENDING");
+}
+
+/**
  * Instantly creates/verifies a UserProfession record for the given role code.
  * Used by the "Done / Bypass (Test)" button in the eKYC modal.
- * Works for any role: admin, doctor, physiotherapist, radiologist.
+ * Still requires Didit identity verification — only profession credentials are bypassed.
  */
 export async function applyForProfessionBypass(roleCode: string) {
   const user = await getAuthUser();
   if (!user) throw new Error("Unauthorized");
 
+  const verified = await isUserVerified();
+  if (!verified) {
+    throw new Error("You must verify your identity before applying for a professional role.");
+  }
+
+  return upsertProfession(user.id, roleCode, "VERIFIED");
+}
+
+async function upsertProfession(
+  userId: string,
+  roleCode: string,
+  status: "PENDING" | "VERIFIED",
+) {
   const key = roleCode.toLowerCase();
   const defaults = PROFESSION_DEFAULTS[key];
 
@@ -67,7 +96,6 @@ export async function applyForProfessionBypass(roleCode: string) {
     throw new Error(`No profession defaults found for role: ${roleCode}`);
   }
 
-  // Ensure ProfessionType exists
   let professionType = await prisma.professionType.findUnique({
     where: { code: defaults.code },
   });
@@ -84,26 +112,29 @@ export async function applyForProfessionBypass(roleCode: string) {
     });
   }
 
-  // Upsert UserProfession → always VERIFIED
   const existing = await prisma.userProfession.findFirst({
-    where: { userId: user.id, professionTypeId: professionType.id },
+    where: { userId, professionTypeId: professionType.id },
   });
 
   if (existing) {
-    if (existing.status !== "VERIFIED") {
+    if (existing.status !== status) {
       await prisma.userProfession.update({
         where: { id: existing.id },
-        data: { status: "VERIFIED", verifiedAt: new Date(), rejectedAt: null, rejectedReason: null },
+        data: {
+          status,
+          verifiedAt: status === "VERIFIED" ? new Date() : null,
+          rejectedAt: null,
+          rejectedReason: null,
+        },
       });
     }
-    // If already VERIFIED, nothing to do
   } else {
     await prisma.userProfession.create({
       data: {
-        userId: user.id,
+        userId,
         professionTypeId: professionType.id,
-        status: "VERIFIED",
-        verifiedAt: new Date(),
+        status,
+        verifiedAt: status === "VERIFIED" ? new Date() : null,
       },
     });
   }

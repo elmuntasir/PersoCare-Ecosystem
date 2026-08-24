@@ -19,6 +19,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { EditPersonalModal } from "./EditPersonalModal";
 import { EditHealthModal } from "./EditHealthModal";
+import { DiditVerifyButton } from "@/components/ekyc/DiditVerifyButton";
 import { applyForProfessionBypass } from "@/actions/admin/applyForAdmin";
 import { switchActiveRole } from "@/actions/switchRole";
 import { type SwitchableRole } from "@/lib/auth-constants";
@@ -53,8 +54,15 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
   const [isSwitching, setIsSwitching] = useState(false);
   const router = useRouter();
 
+  const isIdentityVerified = data.identityVerification?.status === "APPROVED";
+
   const handleBypass = async () => {
     if (!pendingRole) return;
+    if (!isIdentityVerified) {
+      setActiveTab("professional");
+      setShowEKYCWarning(false);
+      return;
+    }
     setIsBypassing(true);
     try {
       await applyForProfessionBypass(pendingRole);
@@ -320,13 +328,29 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
               </button>
             </div>
 
-            <p className="font-body text-sm text-[var(--ink-soft)] mb-6 leading-relaxed">
+            <p className="font-body text-sm text-[var(--ink-soft)] mb-4 leading-relaxed">
               To switch your active authority to{" "}
               <strong className="text-[var(--teal-900)] font-semibold">
                 {roleDisplayName(pendingRole || "")}
               </strong>
-              , you need to complete the accredited eKYC verification and credential validation for this profession.
+              , you need to complete identity verification (Didit eKYC) and credential validation for this profession.
             </p>
+
+            {!isIdentityVerified && (
+              <div className="mb-5 p-3 rounded-xl bg-[var(--paper)] border border-[var(--sage-200)]">
+                <p className="text-xs font-body text-[var(--ink-soft)] mb-3">
+                  Start with NID + selfie verification. After approval, you can apply for the professional role.
+                </p>
+                <DiditVerifyButton />
+              </div>
+            )}
+
+            {isIdentityVerified && (
+              <p className="text-sm text-emerald-600 flex items-center gap-1.5 mb-5">
+                <CheckCircle className="w-4 h-4" strokeWidth={1.6} />
+                Identity verified — you can continue with professional credentials.
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center justify-end gap-2.5">
               <button
@@ -336,12 +360,12 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
               >
                 Cancel
               </button>
-              
-              {/* Test Bypass Button for instant Admin verification */}
+
+              {/* Test bypass: profession credentials only (identity must already be verified) */}
               <button
                 type="button"
                 onClick={handleBypass}
-                disabled={isBypassing}
+                disabled={isBypassing || !isIdentityVerified}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 shadow-sm transition-all cursor-pointer disabled:opacity-50"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
@@ -350,11 +374,14 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
 
               <button
                 type="button"
-                onClick={closeModal}
+                onClick={() => {
+                  setActiveTab("professional");
+                  closeModal();
+                }}
                 className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--coral)] text-white text-sm font-medium hover:opacity-90 shadow-sm transition-opacity cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
-                Proceed to eKYC
+                Go to Professional Tab
               </button>
             </div>
           </div>
@@ -529,6 +556,9 @@ function HealthTab({ data }: { data: ProfileData }) {
 // ─── Professional Tab View ─────────────────────────────────
 
 function ProfessionalTab({ data }: { data: ProfileData }) {
+  const isVerified = data.identityVerification?.status === "APPROVED";
+  const verificationStatus = data.identityVerification;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -538,6 +568,45 @@ function ProfessionalTab({ data }: { data: ProfileData }) {
         <span className="text-xs font-mono text-[var(--ink-soft)] bg-[var(--paper)] px-3 py-1 rounded-full border border-[var(--sage-200)]">
           eKYC Gateway
         </span>
+      </div>
+
+      <div className="mb-5 p-4 bg-[var(--paper)] rounded-xl border border-[var(--sage-200)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-body font-medium text-[var(--ink)]">Identity Verification</p>
+            {isVerified ? (
+              <p className="text-sm text-emerald-600 flex items-center gap-1 mt-1">
+                <CheckCircle className="w-4 h-4" strokeWidth={1.6} />
+                Verified on{" "}
+                {verificationStatus?.verifiedAt
+                  ? new Date(verificationStatus.verifiedAt).toLocaleDateString()
+                  : "recently"}
+              </p>
+            ) : verificationStatus?.status === "PENDING" ||
+              verificationStatus?.status === "IN_REVIEW" ? (
+              <p className="text-sm text-amber-700 mt-1">
+                Verification {verificationStatus.status.toLowerCase().replace("_", " ")} — refresh
+                after Didit finishes.
+              </p>
+            ) : verificationStatus?.status === "DECLINED" ? (
+              <p className="text-sm text-rose-700 mt-1">
+                Verification declined — please try again with a clear NID and selfie.
+              </p>
+            ) : (
+              <p className="text-sm text-[var(--ink-soft)] mt-1">
+                Not verified – you need to verify your identity before applying for a professional
+                role.
+              </p>
+            )}
+          </div>
+          {!isVerified ? (
+            <DiditVerifyButton />
+          ) : (
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-mono">
+              Verified
+            </span>
+          )}
+        </div>
       </div>
 
       {data.professions.length === 0 ? (
