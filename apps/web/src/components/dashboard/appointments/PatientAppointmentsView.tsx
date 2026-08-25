@@ -323,10 +323,12 @@ export function PatientAppointmentsView() {
             name: bookingTarget.org.name,
           }}
           schedule={{
+            scheduleId: bookingTarget.org.scheduleId,
             workingDays: bookingTarget.org.workingDays,
             startTime: bookingTarget.org.startTime,
             endTime: bookingTarget.org.endTime,
             approvalMode: bookingTarget.org.approvalMode,
+            consultationFee: bookingTarget.org.consultationFee,
           }}
           onClose={() => setBookingTarget(null)}
           onSuccess={() => {

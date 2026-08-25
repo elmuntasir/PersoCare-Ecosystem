@@ -196,5 +196,8 @@ export async function getAvailableSlots(formData: FormData) {
     durationMinutes,
     workingDay: dayOfWeek,
     lunchBreak: hasLunch ? { start: lunchStart!, end: lunchEnd! } : null,
+    scheduleId: schedule.id,
+    consultationFee: schedule.consultationFee,
+    platformFee: Number(process.env.PLATFORM_FEE_AMOUNT) || 10,
   }
 }

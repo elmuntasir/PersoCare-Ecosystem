@@ -23,7 +23,15 @@ export async function getOrganizationEmployees(organizationId: string) {
     where: { organizationId, isActive: true },
     include: {
       user: {
-        select: { id: true, name: true, email: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          doctorSchedules: {
+            where: { organizationId, isActive: true },
+            select: { id: true, consultationFee: true },
+          },
+        },
       },
       department: {
         select: { id: true, name: true },

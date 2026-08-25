@@ -278,10 +278,12 @@ export function DoctorProfileClient({ data }: DoctorProfileClientProps) {
             name: selectedOrg.organizationName,
           }}
           schedule={{
+            scheduleId: selectedOrg.scheduleId,
             workingDays: selectedOrg.workingDays,
             startTime: selectedOrg.startTime,
             endTime: selectedOrg.endTime,
             approvalMode: selectedOrg.approvalMode,
+            consultationFee: selectedOrg.consultationFee,
           }}
           onClose={() => setSelectedOrg(null)}
           onSuccess={() => setSelectedOrg(null)}

@@ -16,6 +16,7 @@ export type OrgDoctorSchedule = {
   workingDays: string[];
   approvalMode: string;
   assumedVisitDurationMinutes: number;
+  consultationFee?: number | null;
 };
 
 export type OrgShowcaseDoctor = {
@@ -212,6 +213,7 @@ export async function getOrganizationBySlug(formData: FormData): Promise<Organiz
         workingDays: s.workingDays || [],
         approvalMode: s.approvalMode,
         assumedVisitDurationMinutes: s.assumedVisitDurationMinutes || 15,
+        consultationFee: s.consultationFee,
       })),
     });
   }

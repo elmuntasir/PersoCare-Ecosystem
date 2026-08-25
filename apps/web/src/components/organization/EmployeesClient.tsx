@@ -10,6 +10,7 @@ import {
   getOrganizationEmployees,
   respondToEmployeeInvitation,
 } from "@/actions/admin/employees";
+import { setConsultationFee } from "@/actions/payment/setConsultationFee";
 import {
   UserPlus,
   CheckCircle,
@@ -19,6 +20,8 @@ import {
   AlertCircle,
   Trash2,
   History,
+  Coins,
+  Save,
 } from "lucide-react";
 
 interface EmployeesClientProps {
@@ -28,7 +31,12 @@ interface EmployeesClientProps {
 
 type EmployeeRecord = {
   id: string;
-  user: { id: string; name: string; email: string };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    doctorSchedules?: { id: string; consultationFee: number | null }[];
+  };
   role: string;
   departmentId: string | null;
   department: { id: string; name: string } | null;
@@ -64,6 +72,9 @@ export function EmployeesClient({
   const [role, setRole] = useState("STAFF");
   const [departmentDrafts, setDepartmentDrafts] = useState<Record<string, string>>({});
 
+  const [feeDrafts, setFeeDrafts] = useState<Record<string, string>>({});
+  const [savingFeeScheduleId, setSavingFeeScheduleId] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     const data = await getOrganizationEmployees(organizationId);
     setEmployees(data.employees);
@@ -74,6 +85,14 @@ export function EmployeesClient({
         data.employees.map((employee) => [employee.id, employee.departmentId ?? ""])
       )
     );
+    const fees: Record<string, string> = {};
+    for (const emp of data.employees) {
+      const sched = emp.user.doctorSchedules?.[0];
+      if (sched) {
+        fees[sched.id] = sched.consultationFee !== null && sched.consultationFee !== undefined ? String(sched.consultationFee) : "";
+      }
+    }
+    setFeeDrafts(fees);
   }, [organizationId]);
 
   useEffect(() => {
@@ -91,6 +110,14 @@ export function EmployeesClient({
             data.employees.map((employee) => [employee.id, employee.departmentId ?? ""])
           )
         );
+        const fees: Record<string, string> = {};
+        for (const emp of data.employees) {
+          const sched = emp.user.doctorSchedules?.[0];
+          if (sched) {
+            fees[sched.id] = sched.consultationFee !== null && sched.consultationFee !== undefined ? String(sched.consultationFee) : "";
+          }
+        }
+        setFeeDrafts(fees);
       } catch (error: unknown) {
         if (active) {
           console.error(
@@ -105,6 +132,30 @@ export function EmployeesClient({
       active = false;
     };
   }, [organizationId]);
+
+  const handleSaveFee = async (scheduleId: string) => {
+    try {
+      setSavingFeeScheduleId(scheduleId);
+      setError(null);
+      setSuccess(null);
+
+      const feeValue = feeDrafts[scheduleId];
+      const formData = new FormData();
+      formData.append("scheduleId", scheduleId);
+      if (feeValue) {
+        formData.append("consultationFee", feeValue);
+      }
+
+      await setConsultationFee(formData);
+      setSuccess("Consultation fee updated successfully.");
+      await fetchData();
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update consultation fee.");
+    } finally {
+      setSavingFeeScheduleId(null);
+    }
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,34 +419,159 @@ export function EmployeesClient({
                     <th className="px-4 py-3 font-semibold">Employee</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
                     <th className="px-4 py-3 font-semibold">Department</th>
+                    <th className="px-4 py-3 font-semibold">Consultation Fee (BDT)</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--sage-200)] bg-white">
-                  {employees.map((emp) => (
-                    <tr key={emp.id} className="align-top">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-[var(--teal-900)] text-white flex items-center justify-center font-display font-semibold text-sm shrink-0">
-                            {emp.user.name?.charAt(0)?.toUpperCase() || "U"}
+                  {employees.map((emp) => {
+                    const doctorSchedule = emp.user.doctorSchedules?.[0];
+                    const isDoctor = emp.role === "DOCTOR";
+                    return (
+                      <tr key={emp.id} className="align-top">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-full bg-[var(--teal-900)] text-white flex items-center justify-center font-display font-semibold text-sm shrink-0">
+                              {emp.user.name?.charAt(0)?.toUpperCase() || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-body text-sm font-semibold text-[var(--ink)] truncate">
+                                {emp.user.name}
+                              </p>
+                              <p className="text-xs text-[var(--ink-soft)] font-body truncate">
+                                {emp.user.email}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-body text-sm font-semibold text-[var(--ink)] truncate">
-                              {emp.user.name}
-                            </p>
-                            <p className="text-xs text-[var(--ink-soft)] font-body truncate">
-                              {emp.user.email}
-                            </p>
-                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex text-xs font-mono font-semibold px-3 py-1 rounded-full bg-teal-100 text-[var(--teal-900)] border border-teal-200">
+                            {emp.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 min-w-[200px]">
+                          <select
+                            value={departmentDrafts[emp.id] ?? ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setDepartmentDrafts((current) => ({
+                                ...current,
+                                [emp.id]: value,
+                              }));
+                              void handleDepartmentSave(emp.id, value);
+                            }}
+                            className="w-full rounded-2xl border border-[var(--sage-200)] px-3 py-2 font-body text-sm text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-[var(--coral)] bg-white"
+                            disabled={departments.length === 0 || savingDepartmentId === emp.id}
+                          >
+                            <option value="">Unassigned</option>
+                            {departments.map((dept) => (
+                              <option key={dept.id} value={dept.id}>
+                                {dept.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-4 min-w-[190px]">
+                          {isDoctor && doctorSchedule ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Fee (BDT)"
+                                value={feeDrafts[doctorSchedule.id] ?? ""}
+                                onChange={(e) =>
+                                  setFeeDrafts((prev) => ({
+                                    ...prev,
+                                    [doctorSchedule.id]: e.target.value,
+                                  }))
+                                }
+                                className="w-24 rounded-xl border border-[var(--sage-200)] px-2.5 py-1.5 text-xs font-mono bg-white focus-visible:outline-2 focus-visible:outline-[var(--coral)]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveFee(doctorSchedule.id)}
+                                disabled={savingFeeScheduleId === doctorSchedule.id}
+                                className="p-2 rounded-xl bg-[var(--teal-900)] text-white hover:bg-[var(--teal-800)] transition-colors text-xs disabled:opacity-50"
+                                title="Save Consultation Fee"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--ink-soft)] font-mono italic">
+                              {isDoctor ? "No active schedule" : "N/A"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-mono">
+                            {savingDepartmentId === emp.id ? "Saving..." : "Active"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(emp.id, emp.user.name)}
+                            disabled={removingId === emp.id}
+                            className="inline-flex items-center justify-center p-2 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
+                            title={`Remove ${emp.user.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3 md:hidden">
+              {employees.map((emp) => {
+                const doctorSchedule = emp.user.doctorSchedules?.[0];
+                const isDoctor = emp.role === "DOCTOR";
+                return (
+                  <div
+                    key={emp.id}
+                    className="p-4 rounded-2xl bg-[var(--paper)]/60 border border-[var(--sage-200)] hover:bg-[var(--paper)] transition-all space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[var(--teal-900)] text-white flex items-center justify-center font-display font-semibold text-sm shrink-0">
+                          {emp.user.name?.charAt(0)?.toUpperCase() || "U"}
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex text-xs font-mono font-semibold px-3 py-1 rounded-full bg-teal-100 text-[var(--teal-900)] border border-teal-200">
+                        <div className="min-w-0">
+                          <p className="font-body text-sm font-semibold text-[var(--ink)] truncate">
+                            {emp.user.name}
+                          </p>
+                          <p className="text-xs text-[var(--ink-soft)] font-body mt-0.5 truncate">
+                            {emp.user.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                        <span className="text-xs font-mono font-semibold px-3 py-1 rounded-full bg-teal-100 text-[var(--teal-900)] border border-teal-200">
                           {emp.role}
                         </span>
-                      </td>
-                      <td className="px-4 py-4 min-w-[240px]">
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-mono">
+                          Active
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(emp.id, emp.user.name)}
+                          disabled={removingId === emp.id}
+                          className="p-1.5 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
+                          title={`Remove ${emp.user.name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <div className="min-w-[220px] flex-1 max-w-[380px]">
                         <select
                           value={departmentDrafts[emp.id] ?? ""}
                           onChange={(e) => {
@@ -406,7 +582,7 @@ export function EmployeesClient({
                             }));
                             void handleDepartmentSave(emp.id, value);
                           }}
-                          className="w-full rounded-2xl border border-[var(--sage-200)] px-3 py-2 font-body text-sm text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-[var(--coral)] bg-white"
+                          className="w-full rounded-2xl border border-[var(--sage-200)] px-4 py-2 font-body text-sm text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-[var(--coral)] bg-white"
                           disabled={departments.length === 0 || savingDepartmentId === emp.id}
                         >
                           <option value="">Unassigned</option>
@@ -416,98 +592,43 @@ export function EmployeesClient({
                             </option>
                           ))}
                         </select>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-mono">
-                          {savingDepartmentId === emp.id ? "Saving..." : "Active"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(emp.id, emp.user.name)}
-                          disabled={removingId === emp.id}
-                          className="inline-flex items-center justify-center p-2 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
-                          title={`Remove ${emp.user.name}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="space-y-3 md:hidden">
-              {employees.map((emp) => (
-                <div
-                  key={emp.id}
-                  className="p-4 rounded-2xl bg-[var(--paper)]/60 border border-[var(--sage-200)] hover:bg-[var(--paper)] transition-all"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-[var(--teal-900)] text-white flex items-center justify-center font-display font-semibold text-sm shrink-0">
-                        {emp.user.name?.charAt(0)?.toUpperCase() || "U"}
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-body text-sm font-semibold text-[var(--ink)] truncate">
-                          {emp.user.name}
-                        </p>
-                        <p className="text-xs text-[var(--ink-soft)] font-body mt-0.5 truncate">
-                          {emp.user.email}
-                        </p>
+                      <p className="text-xs text-[var(--ink-soft)] font-body">
+                        {savingDepartmentId === emp.id ? "Saving..." : "Tap save to update department"}
+                      </p>
+                    </div>
+
+                    {isDoctor && doctorSchedule && (
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--sage-200)]/70">
+                        <span className="text-xs font-mono text-[var(--ink-soft)]">Fee (BDT):</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="BDT"
+                            value={feeDrafts[doctorSchedule.id] ?? ""}
+                            onChange={(e) =>
+                              setFeeDrafts((prev) => ({
+                                ...prev,
+                                [doctorSchedule.id]: e.target.value,
+                              }))
+                            }
+                            className="w-24 rounded-xl border border-[var(--sage-200)] px-2.5 py-1 text-xs font-mono bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveFee(doctorSchedule.id)}
+                            disabled={savingFeeScheduleId === doctorSchedule.id}
+                            className="p-1.5 rounded-lg bg-[var(--teal-900)] text-white text-xs"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                      <span className="text-xs font-mono font-semibold px-3 py-1 rounded-full bg-teal-100 text-[var(--teal-900)] border border-teal-200">
-                        {emp.role}
-                      </span>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-mono">
-                        Active
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(emp.id, emp.user.name)}
-                        disabled={removingId === emp.id}
-                        className="p-1.5 rounded-full hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
-                        title={`Remove ${emp.user.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    )}
                   </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <div className="min-w-[220px] flex-1 max-w-[380px]">
-                      <select
-                        value={departmentDrafts[emp.id] ?? ""}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setDepartmentDrafts((current) => ({
-                            ...current,
-                            [emp.id]: value,
-                          }));
-                          void handleDepartmentSave(emp.id, value);
-                        }}
-                        className="w-full rounded-2xl border border-[var(--sage-200)] px-4 py-2 font-body text-sm text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-[var(--coral)] bg-white"
-                        disabled={departments.length === 0 || savingDepartmentId === emp.id}
-                      >
-                        <option value="">Unassigned</option>
-                        {departments.map((dept) => (
-                          <option key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <p className="text-xs text-[var(--ink-soft)] font-body">
-                      {savingDepartmentId === emp.id ? "Saving..." : "Tap save to update department"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

@@ -37,6 +37,8 @@ export type DoctorAffiliatedOrg = {
   startTime: string;
   endTime: string;
   approvalMode: string;
+  scheduleId?: string;
+  consultationFee?: number | null;
 };
 
 export type SearchDoctorResult = {
@@ -388,6 +390,8 @@ export async function searchAppointments(formData: FormData): Promise<SearchAppo
         startTime: s.startTime,
         endTime: s.endTime,
         approvalMode: s.approvalMode,
+        scheduleId: s.id,
+        consultationFee: s.consultationFee,
       });
     }
 

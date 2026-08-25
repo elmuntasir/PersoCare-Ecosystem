@@ -23,6 +23,7 @@ export type DoctorAffiliationDetail = {
   endTime: string;
   approvalMode: string;
   assumedVisitDurationMinutes: number;
+  consultationFee?: number | null;
 };
 
 export type DoctorProfileData = {
@@ -149,6 +150,7 @@ export async function getDoctorProfile(formData: FormData): Promise<DoctorProfil
       endTime: s.endTime,
       approvalMode: s.approvalMode,
       assumedVisitDurationMinutes: s.assumedVisitDurationMinutes || 15,
+      consultationFee: s.consultationFee,
     });
   }
 

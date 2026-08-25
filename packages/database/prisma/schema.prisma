@@ -1210,6 +1210,10 @@ model DoctorSchedule {
   reviewedAt                  DateTime?
   reviewedBy                  String? // admin userId
 
+  // ─── Consultation Fee ──────────────────────────────────────
+  consultationFee             Float?         // Fee in BDT
+  // ───────────────────────────────────────────────────────────
+
   @@index([doctorUserId, organizationId])
   @@index([organizationId, status])
 }
@@ -1238,8 +1242,8 @@ model Appointment {
   organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patientId      String
   patient        User             @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
-  queueId        String
-  queue          AppointmentQueue @relation(fields: [queueId], references: [id])
+  queueId        String?
+  queue          AppointmentQueue? @relation(fields: [queueId], references: [id])
 
   patientName    String?
   patientPhone   String?
@@ -1264,6 +1268,14 @@ model Appointment {
   cancelledAt     DateTime?
   cancelledReason String?
 
+  // ─── Payment Fields ────────────────────────────────────────
+  paymentStatus        PaymentStatus? @default(UNPAID)
+  paymentTransactionId String?
+  paymentAmount        Float?         // total paid (equals platformFee)
+  platformFee          Float?         // the fee collected by PersoCare
+  consultationFee      Float?         // snapshot of fee at booking time (informational)
+  // ───────────────────────────────────────────────────────────
+
   doctors    AppointmentDoctor[]
   skipEvents AppointmentSkipEvent[]
 
@@ -1273,6 +1285,14 @@ model Appointment {
   medicalDocuments MedicalDocument[]
 
   @@unique([queueId, serialNumber])
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 enum AppointmentStatus {
