@@ -264,26 +264,38 @@ export function BookAppointmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[var(--sage-200)] bg-white shadow-2xl">
         {/* ─── Header ─── */}
-        <div className="flex shrink-0 items-center justify-between border-b border-[var(--sage-200)]/70 px-6 py-5 md:px-8">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--sage-200)]/70 px-6 py-4 md:px-8">
           <div>
             <p className="text-xs font-mono uppercase tracking-[0.3em] text-[var(--coral)] font-semibold">
               Consultation Booking
             </p>
-            <h3 className="font-display text-2xl font-bold text-[var(--teal-900)] md:text-3xl">
+            <h3 className="font-display text-xl font-bold text-[var(--teal-900)] md:text-2xl">
               Book an Appointment
             </h3>
-            <p className="mt-0.5 text-xs text-[var(--ink-soft)] md:text-sm">
+            <p className="mt-0.5 text-xs text-[var(--ink-soft)]">
               Dr. {doctor.name} • {doctor.specialization || "General Medicine"} • {organization.name}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-full p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-[var(--sage-200)]/60 hover:text-[var(--ink)]"
-            aria-label="Close modal"
-          >
-            <X className="h-5 w-5" strokeWidth={1.8} />
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              form="booking-appointment-form"
+              disabled={isSubmitting || !selectedSlot || !selectedSlot.isAvailable}
+              className="hidden sm:flex items-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[var(--coral)]/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              {isSubmitting ? "Redirecting..." : `Pay ${platformFee} BDT & Book`}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-full p-2 text-[var(--ink-soft)] transition-colors hover:bg-[var(--sage-200)]/60 hover:text-[var(--ink)]"
+              aria-label="Close modal"
+            >
+              <X className="h-5 w-5" strokeWidth={1.8} />
+            </button>
+          </div>
         </div>
 
         {/* ─── Scrollable Content ─── */}
