@@ -51,11 +51,28 @@ const styles = StyleSheet.create({
     color: "#17211e",
     fontSize: 10,
     lineHeight: 1.45,
+    position: "relative",
+  },
+  watermarkContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: -1,
+  },
+  watermarkImage: {
+    width: 320,
+    height: 320,
+    opacity: 0.05,
+    objectFit: "contain",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingBottom: 14,
     marginBottom: 16,
     borderBottomWidth: 2,
@@ -64,15 +81,22 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   brandMark: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 8,
     backgroundColor: "#0f3b34",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: 12,
+    overflow: "hidden",
+  },
+  brandMarkLogo: {
+    width: 42,
+    height: 42,
+    objectFit: "cover",
   },
   brandMarkText: {
     color: "#ffffff",
@@ -80,7 +104,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   brandTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "bold",
     color: "#0f3b34",
   },
@@ -89,9 +113,21 @@ const styles = StyleSheet.create({
     color: "#4a5852",
     marginTop: 2,
   },
+  orgLogoBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#d9e5de",
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+    overflow: "hidden",
+  },
   orgLogo: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     objectFit: "contain",
   },
   headerRight: {
@@ -295,23 +331,42 @@ export function PrescriptionPDF({ prescription }: { prescription: PrescriptionPD
       ? `${prescription.patientAge} years${prescription.patientGender ? ` · ${prescription.patientGender}` : ""}`
       : prescription.patientGender || "Not recorded";
 
+  const logoUrl = prescription.organizationLogo || "/logos/logo_notxt.png";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* Background Watermark */}
+        <View style={styles.watermarkContainer}>
+          <Image src={logoUrl} style={styles.watermarkImage} />
+        </View>
+
         <View style={styles.header}>
           <View style={styles.brandRow}>
             <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>Rx</Text>
+              {prescription.organizationLogo ? (
+                <Image src={prescription.organizationLogo} style={styles.brandMarkLogo} />
+              ) : (
+                <Text style={styles.brandMarkText}>Rx</Text>
+              )}
             </View>
             <View>
-              <Text style={styles.brandTitle}>PersoCare Prescription</Text>
-              <Text style={styles.brandSubtitle}>Professional prescription summary and medication guide</Text>
+              <Text style={styles.brandTitle}>
+                {prescription.organizationName || "PersoCare Prescription"}
+              </Text>
+              <Text style={styles.brandSubtitle}>
+                {prescription.organizationName
+                  ? `PersoCare Clinical Workflow · ${prescription.organizationName}`
+                  : "Professional prescription summary and medication guide"}
+              </Text>
             </View>
           </View>
 
           <View style={styles.headerRight}>
             {prescription.organizationLogo ? (
-              <Image src={prescription.organizationLogo} style={styles.orgLogo} />
+              <View style={styles.orgLogoBadge}>
+                <Image src={prescription.organizationLogo} style={styles.orgLogo} />
+              </View>
             ) : null}
             <Text style={styles.refBadge}>Reference</Text>
             <Text style={styles.refValue}>#{prescription.id.slice(-8).toUpperCase()}</Text>

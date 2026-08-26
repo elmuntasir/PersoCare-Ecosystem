@@ -373,21 +373,23 @@ export function DashboardSidebar({ user }: { user: DashboardUser }) {
       >
         <div className="flex-1 overflow-y-auto flex flex-col px-3 py-3 space-y-1">
           {/* Brand Header */}
-          <div className="px-3 py-2 flex items-center gap-3 mb-1 shrink-0">
-            <div className="w-9 h-9 flex items-center justify-center shadow-sm overflow-hidden">
-              <Image src="/logos/logo_notxt.png" alt="PersoCare Icon" width={36} height={36} className="object-cover" />
-            </div>
+          <div className="px-3 py-2 flex flex-col justify-center mb-1 shrink-0">
             <div>
-              <span className="font-display font-bold text-xl text-white tracking-tight block leading-tight">
-                <Image src="/logos/logo1.png" alt="PersoCare" width={120} height={28} className="object-contain brightness-0 invert" />
-              </span>
+              <Image
+                src="/logos/logo1.png"
+                alt="PersoCare"
+                width={140}
+                height={36}
+                className="object-contain brightness-0 invert"
+                priority
+              />
               {user.primaryRole.kind === "platform_owner" && (
-                <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider">
+                <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider block mt-1">
                   Platform Admin
                 </span>
               )}
               {user.primaryRole.kind === "org_role" && (
-                <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider truncate max-w-[140px] block">
+                <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider truncate max-w-[140px] block mt-1">
                   {user.primaryRole.organizationName}
                 </span>
               )}
