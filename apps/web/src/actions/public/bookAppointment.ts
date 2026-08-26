@@ -66,9 +66,11 @@ export async function publicBookAppointment(formData: FormData) {
   const endOfDay = new Date(appointmentDate);
   endOfDay.setHours(23, 59, 59, 999);
 
+  // Only prevent the same phone number from booking twice with the same doctor on the same day
   const existingAppointment = await prisma.appointment.findFirst({
     where: {
       organizationId: data.organizationId,
+      patientPhone: data.patientPhone,
       doctors: { some: { doctorUserId: data.doctorId } },
       status: { in: ["BOOKED", "PENDING"] },
       bookedSlotTime: {
@@ -79,7 +81,7 @@ export async function publicBookAppointment(formData: FormData) {
   });
 
   if (existingAppointment) {
-    throw new Error("You already have an appointment with this doctor on this day.");
+    throw new Error("A booking with this phone number already exists for this doctor on this day.");
   }
 
   const queueDate = new Date(appointmentDate);

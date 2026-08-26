@@ -282,7 +282,7 @@ export function BookAppointmentModal({
               type="submit"
               form="booking-appointment-form"
               disabled={isSubmitting || !selectedSlot || !selectedSlot.isAvailable}
-              className="hidden sm:flex items-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[var(--coral)]/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[var(--coral)]/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CreditCard className="w-3.5 h-3.5" />
               {isSubmitting ? "Redirecting..." : `Pay ${platformFee} BDT & Book`}
