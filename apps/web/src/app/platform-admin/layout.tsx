@@ -12,6 +12,7 @@ import {
   Megaphone,
   Settings,
 } from "lucide-react";
+import { PageAnimationShell } from "@/components/layout/PageAnimationShell";
 
 export const dynamic = "force-dynamic";
 
@@ -163,7 +164,9 @@ export default async function PlatformAdminLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-6 md:p-10">{children}</main>
+        <main className="flex-1 p-6 md:p-10">
+          <PageAnimationShell className="w-full">{children}</PageAnimationShell>
+        </main>
       </div>
     </div>
   );

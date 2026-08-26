@@ -1,0 +1,8 @@
+import type { ReactNode } from 'react'
+import { PageAnimationShell } from '@/components/layout/PageAnimationShell'
+
+export default function LoginLayout({ children }: { children: ReactNode }) {
+  return (
+    <PageAnimationShell className="min-h-screen w-full">{children}</PageAnimationShell>
+  )
+}

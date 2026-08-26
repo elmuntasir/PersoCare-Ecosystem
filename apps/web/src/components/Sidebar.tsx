@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useRole, Role } from '@/contexts/RoleContext'
 import { useAvatar } from '@/contexts/AvatarContext'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   LayoutDashboard,
   Utensils,
@@ -145,7 +146,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="mb-5">
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl text-[var(--teal-900)]">PersoCare</h1>
+          <Image src="/logos/logo1.png" alt="PersoCare" width={140} height={40} className="object-contain" />
         </div>
         <div className="flex items-center gap-2 mt-2">
           {renderAvatar()}

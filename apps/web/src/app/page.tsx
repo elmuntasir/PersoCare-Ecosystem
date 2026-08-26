@@ -40,7 +40,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[var(--paper)]">
       {/* Nav */}
       <header className="flex items-center justify-between px-6 md:px-12 py-6 max-w-6xl mx-auto">
-        <span className="font-display text-xl text-[var(--teal-900)]">PersoCare</span>
+        <Image src="/logos/logo1.png" alt="PersoCare" width={140} height={40} className="object-contain" />
         <nav className="flex items-center gap-6">
           <a
             href="#features"
@@ -198,7 +198,7 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--sage-200)]">
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-12 grid sm:grid-cols-2 md:grid-cols-4 gap-10">
           <div>
-            <span className="font-display text-lg text-[var(--teal-900)]">PersoCare</span>
+            <Image src="/logos/logo1.png" alt="PersoCare" width={120} height={34} className="object-contain" />
             <p className="mt-3 text-sm text-[var(--ink-soft)] max-w-xs">
               Your personal health companion for tracking and managing every part of your
               care.

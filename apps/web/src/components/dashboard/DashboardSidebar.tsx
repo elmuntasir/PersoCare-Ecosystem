@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -373,12 +374,12 @@ export function DashboardSidebar({ user }: { user: DashboardUser }) {
         <div className="flex-1 overflow-y-auto flex flex-col px-3 py-3 space-y-1">
           {/* Brand Header */}
           <div className="px-3 py-2 flex items-center gap-3 mb-1 shrink-0">
-            <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
-              ♥
+            <div className="w-9 h-9 flex items-center justify-center shadow-sm overflow-hidden">
+              <Image src="/logos/logo_notxt.png" alt="PersoCare Icon" width={36} height={36} className="object-cover" />
             </div>
             <div>
               <span className="font-display font-bold text-xl text-white tracking-tight block leading-tight">
-                PersoCare
+                <Image src="/logos/logo1.png" alt="PersoCare" width={120} height={28} className="object-contain brightness-0 invert" />
               </span>
               {user.primaryRole.kind === "platform_owner" && (
                 <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider">

@@ -62,7 +62,15 @@ type PrescriptionReference = PatientMedicalRecords["prescriptions"][number];
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) {
-    return error.message || fallback;
+    const message = error.message || fallback;
+    // Next.js digests server errors in production — surface a usable hint.
+    if (
+      message.includes("Server Components render") ||
+      message.includes("omitted in production")
+    ) {
+      return "Payment setup failed on the server. Check SSLCommerz credentials and app URL env vars, then try again.";
+    }
+    return message;
   }
 
   return fallback;
@@ -250,7 +258,11 @@ export function BookAppointmentModal({
         if (onSuccess) onSuccess();
         window.location.href = result.redirectUrl;
       } else {
-        throw new Error("Could not initialize payment gateway session.");
+        const message =
+          !result.success && result.error
+            ? result.error
+            : "Could not initialize payment gateway session.";
+        throw new Error(message);
       }
     } catch (error: unknown) {
       setError(getErrorMessage(error, "Failed to initialize booking payment. Please try again."));
@@ -277,25 +289,14 @@ export function BookAppointmentModal({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              form="booking-appointment-form"
-              disabled={isSubmitting || !selectedSlot || !selectedSlot.isAvailable}
-              className="flex items-center gap-2 rounded-full bg-[var(--coral)] px-5 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[var(--coral)]/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              {isSubmitting ? "Redirecting..." : `Pay ${platformFee} BDT & Book`}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 rounded-full p-2 text-[var(--ink-soft)] transition-colors hover:bg-[var(--sage-200)]/60 hover:text-[var(--ink)]"
-              aria-label="Close modal"
-            >
-              <X className="h-5 w-5" strokeWidth={1.8} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-full p-2 text-[var(--ink-soft)] transition-colors hover:bg-[var(--sage-200)]/60 hover:text-[var(--ink)]"
+            aria-label="Close modal"
+          >
+            <X className="h-5 w-5" strokeWidth={1.8} />
+          </button>
         </div>
 
         {/* ─── Scrollable Content ─── */}
