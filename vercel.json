@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "cd ../.. && prisma generate --schema=packages/database/prisma/schema.prisma && pnpm --filter web build",
+  "buildCommand": "prisma generate --schema=../../packages/database/prisma/schema.prisma && next build",
   "outputDirectory": ".next"
 }
