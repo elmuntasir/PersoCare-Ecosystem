@@ -3,7 +3,11 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { ACTIVE_ROLE_COOKIE, type SwitchableRole } from "@/lib/auth-constants";
+import {
+  ACTIVE_ROLE_COOKIE,
+  INVENTORY_MANAGER_ROLE,
+  type SwitchableRole,
+} from "@/lib/auth-constants";
 
 
 /**
@@ -41,6 +45,10 @@ export async function switchActiveRole(role: SwitchableRole): Promise<{ ok: bool
         where: { status: "VERIFIED" },
       },
       adminRoles: { where: { isActive: true } },
+      employees: {
+        where: { isActive: true, role: INVENTORY_MANAGER_ROLE },
+        select: { id: true, organizationId: true },
+      },
     },
   });
 
@@ -57,7 +65,10 @@ export async function switchActiveRole(role: SwitchableRole): Promise<{ ok: bool
     return { ok: true };
   }
 
-  if (role === "admin") {
+  if (role === "inventory_manager") {
+    const isInventoryManager = dbUser.employees.length > 0;
+    if (!isInventoryManager) return { ok: false, error: "Not an inventory manager" };
+  } else if (role === "admin") {
     const isAdmin =
       dbUser.adminRoles.length > 0 ||
       dbUser.professions.some((p) => p.professionType.code.toUpperCase() === "ADMIN");
@@ -83,6 +94,13 @@ export async function switchActiveRole(role: SwitchableRole): Promise<{ ok: bool
 export async function getPersistedActiveRole(): Promise<SwitchableRole | null> {
   const cookieStore = await cookies();
   const val = cookieStore.get(ACTIVE_ROLE_COOKIE)?.value;
-  const valid: SwitchableRole[] = ["user", "doctor", "physiotherapist", "radiologist", "admin"];
+  const valid: SwitchableRole[] = [
+    "user",
+    "doctor",
+    "physiotherapist",
+    "radiologist",
+    "admin",
+    "inventory_manager",
+  ];
   return valid.includes(val as SwitchableRole) ? (val as SwitchableRole) : null;
 }

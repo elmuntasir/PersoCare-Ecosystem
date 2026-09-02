@@ -4,12 +4,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { ACTIVE_ROLE_COOKIE, type SwitchableRole } from "@/lib/auth-constants";
+import {
+  ACTIVE_ROLE_COOKIE,
+  INVENTORY_MANAGER_ROLE,
+  type SwitchableRole,
+} from "@/lib/auth-constants";
 
 export type DashboardRole =
   | { kind: "platform_owner"; label: "Platform Owner" }
   | { kind: "profession"; label: string } // e.g. "Doctor", verified UserProfession
   | { kind: "org_role"; label: string; organizationName: string } // active OrganizationMembership
+  | { kind: "inventory_manager"; label: string; organizationName: string } // active INVENTORY_MANAGER employee
   | { kind: "user"; label: "" }; // default regular user without forcing "PATIENT" title
 
 export type DashboardUser = {
@@ -55,6 +60,10 @@ const getDashboardUserOrNull = cache(async (): Promise<DashboardUser | null> => 
         where: { status: "ACTIVE" },
         include: { role: true, organization: true },
       },
+      employees: {
+        where: { isActive: true },
+        include: { organization: true },
+      },
     },
   });
 
@@ -81,6 +90,13 @@ const getDashboardUserOrNull = cache(async (): Promise<DashboardUser | null> => 
       label: m.role.name,
       organizationName: m.organization.name,
     };
+  } else if (user.employees.some((e) => e.role === INVENTORY_MANAGER_ROLE)) {
+    const inv = user.employees.find((e) => e.role === INVENTORY_MANAGER_ROLE)!;
+    primaryRole = {
+      kind: "inventory_manager",
+      label: "Inventory Manager",
+      organizationName: inv.organization.name,
+    };
   } else if (user.professions[0]) {
     primaryRole = {
       kind: "profession",
@@ -104,6 +120,13 @@ const getDashboardUserOrNull = cache(async (): Promise<DashboardUser | null> => 
         kind: "org_role",
         label: a?.isPrimaryAdmin ? "Primary Admin" : "Admin",
         organizationName: a?.organization?.name || "Organization",
+      };
+    } else if (cookieRole === "inventory_manager") {
+      const inv = user.employees.find((e) => e.role === INVENTORY_MANAGER_ROLE);
+      primaryRole = {
+        kind: "inventory_manager",
+        label: "Inventory Manager",
+        organizationName: inv?.organization?.name || "Organization",
       };
     } else if (["doctor", "physiotherapist", "radiologist"].includes(cookieRole)) {
       const prof = user.professions.find(

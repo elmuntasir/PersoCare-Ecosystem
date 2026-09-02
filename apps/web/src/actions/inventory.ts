@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import type { MovementType } from '@prisma/client'
 
 const categorySchema = z.object({
   categoryId: z.string().optional(),
@@ -49,6 +50,7 @@ const itemSchema = z.object({
   categoryId: z.string().min(1),
   unit: z.string().optional(),
   reorderLevel: z.number().int().nonnegative().optional(),
+  stockMethod: z.enum(['FIFO', 'LIFO', 'FEFO', 'AVERAGE']).optional(),
 })
 
 export async function upsertInventoryItem(formData: FormData) {
@@ -62,6 +64,7 @@ export async function upsertInventoryItem(formData: FormData) {
     categoryId: formData.get('categoryId'),
     unit: formData.get('unit') || undefined,
     reorderLevel: formData.get('reorderLevel') ? Number(formData.get('reorderLevel')) : undefined,
+    stockMethod: (formData.get('stockMethod') as string) || undefined,
   })
 
   if (data.itemId) {
@@ -73,6 +76,7 @@ export async function upsertInventoryItem(formData: FormData) {
         categoryId: data.categoryId,
         unit: data.unit,
         reorderLevel: data.reorderLevel,
+        stockMethod: data.stockMethod,
       },
     })
   } else {
@@ -83,9 +87,55 @@ export async function upsertInventoryItem(formData: FormData) {
         categoryId: data.categoryId,
         unit: data.unit,
         reorderLevel: data.reorderLevel,
+        stockMethod: data.stockMethod,
       },
     })
   }
+
+  revalidatePath('/dashboard/inventory')
+  return { success: true }
+}
+
+const itemMethodSchema = z.object({
+  itemId: z.string().min(1),
+  stockMethod: z.enum(['FIFO', 'LIFO', 'FEFO', 'AVERAGE']),
+})
+
+export async function setInventoryItemMethod(formData: FormData) {
+  const user = await getSessionUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const data = itemMethodSchema.parse({
+    itemId: formData.get('itemId'),
+    stockMethod: formData.get('stockMethod'),
+  })
+
+  await prisma.inventoryItem.update({
+    where: { id: data.itemId },
+    data: { stockMethod: data.stockMethod },
+  })
+
+  revalidatePath('/dashboard/inventory')
+  revalidatePath('/dashboard/inventory/items')
+  return { success: true }
+}
+
+const archiveItemSchema = z.object({
+  itemId: z.string().min(1),
+})
+
+export async function archiveInventoryItem(formData: FormData) {
+  const user = await getSessionUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const data = archiveItemSchema.parse({
+    itemId: formData.get('itemId'),
+  })
+
+  await prisma.inventoryItem.update({
+    where: { id: data.itemId },
+    data: { isActive: false },
+  })
 
   revalidatePath('/dashboard/inventory')
   return { success: true }
@@ -98,6 +148,7 @@ const batchSchema = z.object({
   departmentId: z.string().optional(),
   batchNumber: z.string().min(1),
   quantity: z.number().int(),
+  inboundType: z.enum(['PURCHASE', 'DONATION']).optional(),
   expiryDate: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -106,13 +157,19 @@ export async function upsertInventoryBatch(formData: FormData) {
   const user = await getSessionUser()
   if (!user) throw new Error('Unauthorized')
 
+  const quantity = Number(formData.get('quantity'))
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error('Batch quantity must be a positive integer')
+  }
+
   const data = batchSchema.parse({
     batchId: formData.get('batchId') || undefined,
     itemId: formData.get('itemId'),
     organizationId: formData.get('organizationId'),
     departmentId: formData.get('departmentId') || undefined,
     batchNumber: formData.get('batchNumber'),
-    quantity: Number(formData.get('quantity')),
+    quantity,
+    inboundType: formData.get('inboundType') || 'PURCHASE',
     expiryDate: formData.get('expiryDate') || undefined,
     notes: formData.get('notes') || undefined,
   })
@@ -133,20 +190,33 @@ export async function upsertInventoryBatch(formData: FormData) {
       },
     })
   } else {
-    await prisma.inventoryBatch.create({
-      data: {
-        itemId: data.itemId,
-        organizationId: data.organizationId,
-        departmentId: data.departmentId,
-        batchNumber: data.batchNumber,
-        quantity: data.quantity,
-        expiryDate,
-        notes: data.notes,
-      },
+    await prisma.$transaction(async (tx) => {
+      const batch = await tx.inventoryBatch.create({
+        data: {
+          itemId: data.itemId,
+          organizationId: data.organizationId,
+          departmentId: data.departmentId,
+          batchNumber: data.batchNumber,
+          quantity: data.quantity,
+          expiryDate,
+          notes: data.notes,
+        },
+      })
+
+      await tx.inventoryMovement.create({
+        data: {
+          batchId: batch.id,
+          quantity: data.quantity,
+          type: data.inboundType as MovementType,
+          performedBy: user.id,
+          notes: data.notes ? `Inbound via ${data.inboundType}: ${data.notes}` : `Inbound via ${data.inboundType}`,
+        },
+      })
     })
   }
 
   revalidatePath('/dashboard/inventory')
+  revalidatePath('/dashboard/inventory/blood-bags')
   return { success: true }
 }
 

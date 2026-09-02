@@ -1,6 +1,17 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
+const PERSOCARE_LOGO = "/logos/logo1.png";
+const PERSOCARE_ICON = "/logos/logo_notxt.png";
+
+function publicAssetUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}${normalized}`;
+  }
+  return normalized;
+}
+
 type TimingInstruction = {
   mealRelation: "PRE_MEAL" | "WITH_MEAL" | "POST_MEAL";
   mealType: "BREAKFAST" | "LUNCH" | "DINNER" | "SNACK";
@@ -46,12 +57,21 @@ export interface PrescriptionPDFData {
 const styles = StyleSheet.create({
   page: {
     padding: 36,
+    paddingTop: 28,
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
     color: "#17211e",
     fontSize: 10,
     lineHeight: 1.45,
     position: "relative",
+  },
+  accentBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+    backgroundColor: "#0f3b34",
   },
   watermarkContainer: {
     position: "absolute",
@@ -64,86 +84,114 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   watermarkImage: {
-    width: 320,
-    height: 320,
-    opacity: 0.05,
+    width: 340,
+    height: 340,
+    opacity: 0.04,
     objectFit: "contain",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 14,
-    marginBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: "#0f3b34",
+    paddingBottom: 16,
+    marginBottom: 18,
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#c5d9cf",
   },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  brandMark: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: "#0f3b34",
-    alignItems: "center",
+  headerLeft: {
+    width: "30%",
     justifyContent: "center",
-    marginRight: 12,
-    overflow: "hidden",
+    alignItems: "flex-start",
   },
-  brandMarkLogo: {
-    width: 42,
-    height: 42,
-    objectFit: "cover",
+  persoCareLogo: {
+    width: 190,
+    height: 62,
+    objectFit: "contain",
   },
-  brandMarkText: {
-    color: "#ffffff",
-    fontSize: 14,
+  headerCenter: {
+    width: "40%",
+    paddingHorizontal: 8,
+    alignItems: "center",
+  },
+  rxBadge: {
+    fontSize: 8,
+    color: "#0f3b34",
+    textTransform: "uppercase",
     fontWeight: "bold",
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
-  brandTitle: {
-    fontSize: 17,
+  clinicTitle: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#0f3b34",
+    textAlign: "center",
   },
-  brandSubtitle: {
-    fontSize: 9.5,
+  clinicSubtitle: {
+    fontSize: 8.5,
     color: "#4a5852",
-    marginTop: 2,
+    marginTop: 3,
+    textAlign: "center",
+  },
+  orgLogoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
   },
   orgLogoBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: "#d9e5de",
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
     overflow: "hidden",
+    marginRight: 6,
   },
   orgLogo: {
-    width: 40,
-    height: 40,
+    width: 24,
+    height: 24,
     objectFit: "contain",
   },
+  orgLogoLabel: {
+    fontSize: 7.5,
+    color: "#66736f",
+  },
   headerRight: {
+    width: "30%",
     alignItems: "flex-end",
   },
+  refBox: {
+    minHeight: 62,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: "#f0f7f3",
+    borderWidth: 1,
+    borderColor: "#c5d9cf",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
   refBadge: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     color: "#4a5852",
     textTransform: "uppercase",
     fontWeight: "bold",
+    letterSpacing: 0.6,
   },
   refValue: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#0f3b34",
     fontWeight: "bold",
     marginTop: 2,
+  },
+  refDate: {
+    fontSize: 8.5,
+    color: "#4a5852",
+    marginTop: 4,
   },
   infoGrid: {
     flexDirection: "row",
@@ -295,8 +343,19 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     fontSize: 7.5,
     color: "#66736f",
+  },
+  footerBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  footerLogo: {
+    width: 16,
+    height: 16,
+    objectFit: "contain",
+    marginRight: 6,
   },
 });
 
@@ -331,46 +390,55 @@ export function PrescriptionPDF({ prescription }: { prescription: PrescriptionPD
       ? `${prescription.patientAge} years${prescription.patientGender ? ` · ${prescription.patientGender}` : ""}`
       : prescription.patientGender || "Not recorded";
 
-  const logoUrl = prescription.organizationLogo || "/logos/logo_notxt.png";
+  const persoCareLogoUrl = publicAssetUrl(PERSOCARE_LOGO);
+  const persoCareIconUrl = publicAssetUrl(PERSOCARE_ICON);
+  const orgLogoUrl = prescription.organizationLogo
+    ? prescription.organizationLogo.startsWith("http")
+      ? prescription.organizationLogo
+      : publicAssetUrl(prescription.organizationLogo)
+    : null;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Background Watermark */}
+        <View style={styles.accentBar} fixed />
+
         <View style={styles.watermarkContainer}>
-          <Image src={logoUrl} style={styles.watermarkImage} />
+          <Image src={persoCareIconUrl} style={styles.watermarkImage} />
         </View>
 
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <View style={styles.brandMark}>
-              {prescription.organizationLogo ? (
-                <Image src={prescription.organizationLogo} style={styles.brandMarkLogo} />
-              ) : (
-                <Text style={styles.brandMarkText}>Rx</Text>
-              )}
-            </View>
-            <View>
-              <Text style={styles.brandTitle}>
-                {prescription.organizationName || "PersoCare Prescription"}
-              </Text>
-              <Text style={styles.brandSubtitle}>
-                {prescription.organizationName
-                  ? `PersoCare Clinical Workflow · ${prescription.organizationName}`
-                  : "Professional prescription summary and medication guide"}
-              </Text>
-            </View>
+          <View style={styles.headerLeft}>
+            <Image src={persoCareLogoUrl} style={styles.persoCareLogo} />
+          </View>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.rxBadge}>Medical Prescription</Text>
+            <Text style={styles.clinicTitle}>
+              {prescription.organizationName || "PersoCare Clinic"}
+            </Text>
+            <Text style={styles.clinicSubtitle}>
+              PersoCare Clinical Workflow
+              {prescription.doctorSpecialization
+                ? ` · ${prescription.doctorSpecialization}`
+                : ""}
+            </Text>
+            {orgLogoUrl ? (
+              <View style={styles.orgLogoRow}>
+                <View style={styles.orgLogoBadge}>
+                  <Image src={orgLogoUrl} style={styles.orgLogo} />
+                </View>
+                <Text style={styles.orgLogoLabel}>Verified organization</Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.headerRight}>
-            {prescription.organizationLogo ? (
-              <View style={styles.orgLogoBadge}>
-                <Image src={prescription.organizationLogo} style={styles.orgLogo} />
-              </View>
-            ) : null}
-            <Text style={styles.refBadge}>Reference</Text>
-            <Text style={styles.refValue}>#{prescription.id.slice(-8).toUpperCase()}</Text>
-            <Text style={styles.brandSubtitle}>{formattedDate}</Text>
+            <View style={styles.refBox}>
+              <Text style={styles.refBadge}>Reference No.</Text>
+              <Text style={styles.refValue}>#{prescription.id.slice(-8).toUpperCase()}</Text>
+              <Text style={styles.refDate}>{formattedDate}</Text>
+            </View>
           </View>
         </View>
 
@@ -481,7 +549,10 @@ export function PrescriptionPDF({ prescription }: { prescription: PrescriptionPD
         </View>
 
         <View style={styles.footer} fixed>
-          <Text>Generated securely by PersoCare Digital Health Ecosystem</Text>
+          <View style={styles.footerBrand}>
+            <Image src={persoCareIconUrl} style={styles.footerLogo} />
+            <Text>Generated securely by PersoCare Digital Health Ecosystem</Text>
+          </View>
           <Text>Reference #{prescription.id.slice(-8).toUpperCase()}</Text>
         </View>
       </Page>

@@ -72,6 +72,7 @@ model User {
   bloodRequestsPosted        BloodRequestPost[]              @relation("BloodRequestRequester")
   donationApplicationsMade   DonationApplication[]           @relation("DonationApplicationDonor")
   contactShareRequestsMade   ContactShareRequest[]           @relation("ContactShareRequester")
+  bloodBagRequests           BloodBagRequest[]               @relation("BloodBagRequester")
 
   // Retained from old schema
   reviewsWritten      Review[]             @relation("ReviewAuthor")
@@ -310,6 +311,7 @@ model Organization {
   inventoryBatches      InventoryBatch[]
   inventoryAlerts       InventoryAlert[]
   bloodDonationUnits    BloodDonationUnit[]
+  bloodBagRequests      BloodBagRequest[]
   orgRoles              OrganizationRole[]
   schedules             DoctorSchedule[]
   appointments          Appointment[]
@@ -926,6 +928,7 @@ model InventoryItem {
   category     InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   unit         String?
   reorderLevel Int?
+  stockMethod  StockMethod       @default(FIFO)
   isActive     Boolean           @default(true)
   createdAt    DateTime          @default(now())
 
@@ -933,6 +936,14 @@ model InventoryItem {
   alerts  InventoryAlert[]
 
   @@index([categoryId, isActive])
+}
+
+// Controls which stock batch is consumed first when an item is dispensed.
+enum StockMethod {
+  FIFO // First In, First Out – oldest received batch first
+  LIFO // Last In, First Out – newest received batch first
+  FEFO // First Expiry, First Out – soonest expiring batch first
+  AVERAGE // Pooled – no single batch priority
 }
 
 model InventoryBatch {
@@ -1096,6 +1107,33 @@ enum DonationUnitStatus {
   READY
   DISPENSED
   WASTED
+}
+
+// A patient's request to obtain ready blood bags from a specific organization.
+model BloodBagRequest {
+  id             String               @id @default(cuid())
+  requesterId    String
+  requester      User                 @relation("BloodBagRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bloodType      BloodType
+  unitsNeeded    Int                  @default(1)
+  patientName    String?
+  contactPhone   String?
+  notes          String?
+  status         BloodBagRequestStatus @default(PENDING)
+  createdAt      DateTime             @default(now())
+  respondedAt    DateTime?
+
+  @@index([organizationId, status])
+  @@index([requesterId, status])
+}
+
+enum BloodBagRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
 }
 
 model ContactShareRequest {

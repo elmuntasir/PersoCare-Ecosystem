@@ -24,6 +24,8 @@ import {
   Heart,
   Boxes,
   Activity,
+  Droplets,
+  Plus,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { DashboardRole, DashboardUser } from "@/lib/get-current-dashboard-user";
@@ -243,6 +245,100 @@ const NAV_MAP: Record<DashboardRole["kind"], NavItem[]> = {
       bgColor: "bg-teal-500/10",
       match: (pathname) => pathname === "/dashboard/inventory",
     },
+    {
+      id: "nav-inventory-items",
+      href: "/dashboard/inventory/items",
+      label: "Items",
+      icon: ClipboardList,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/items",
+    },
+    {
+      id: "nav-inventory-add",
+      href: "/dashboard/inventory/add-item",
+      label: "Add Items",
+      icon: Plus,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/add-item",
+    },
+    {
+      id: "nav-inventory-track",
+      href: "/dashboard/inventory/track",
+      label: "Track Items",
+      icon: Activity,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/track",
+    },
+    {
+      id: "nav-inventory-track-history",
+      href: "/dashboard/inventory/track/history",
+      label: "Track History",
+      icon: History,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/track/history",
+    },
+  ],
+
+  /** Inventory Manager – focuses only on inventory workflows */
+  inventory_manager: [
+    {
+      id: "nav-inv-dashboard",
+      href: "/dashboard/inventory",
+      label: "Dashboard",
+      icon: Boxes,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory",
+    },
+    {
+      id: "nav-inv-items",
+      href: "/dashboard/inventory/items",
+      label: "Items",
+      icon: ClipboardList,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/items",
+    },
+    {
+      id: "nav-inv-add",
+      href: "/dashboard/inventory/add-item",
+      label: "Add Items",
+      icon: Plus,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/add-item",
+    },
+    {
+      id: "nav-inv-track",
+      href: "/dashboard/inventory/track",
+      label: "Track Items",
+      icon: Activity,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/track",
+    },
+    {
+      id: "nav-inv-track-history",
+      href: "/dashboard/inventory/track/history",
+      label: "Track History",
+      icon: History,
+      color: "text-teal-400",
+      bgColor: "bg-teal-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/track/history",
+    },
+    {
+      id: "nav-inv-batches",
+      href: "/dashboard/inventory/blood-bags",
+      label: "Blood Bags",
+      icon: Droplets,
+      color: "text-rose-400",
+      bgColor: "bg-rose-500/10",
+      match: (pathname) => pathname === "/dashboard/inventory/blood-bags",
+    },
   ],
 
   /** Platform owner (super admin) */
@@ -337,7 +433,7 @@ export function DashboardSidebar({ user }: { user: DashboardUser }) {
   const roleBadge =
     user.primaryRole.kind === "platform_owner"
       ? "Platform Owner"
-      : user.primaryRole.kind === "org_role"
+      : user.primaryRole.kind === "org_role" || user.primaryRole.kind === "inventory_manager"
         ? user.primaryRole.label
         : user.primaryRole.kind === "profession"
           ? user.primaryRole.label
@@ -390,6 +486,11 @@ export function DashboardSidebar({ user }: { user: DashboardUser }) {
               )}
               {user.primaryRole.kind === "org_role" && (
                 <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider truncate max-w-[140px] block mt-1">
+                  {user.primaryRole.organizationName}
+                </span>
+              )}
+              {user.primaryRole.kind === "inventory_manager" && (
+                <span className="text-[10px] font-mono text-teal-400 uppercase tracking-wider truncate max-w-[140px] block mt-1">
                   {user.primaryRole.organizationName}
                 </span>
               )}

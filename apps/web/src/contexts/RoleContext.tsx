@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 
-export type Role = 'patient' | 'doctor' | 'physiotherapist' | 'radiologist' | 'admin'
+export type Role = 'patient' | 'doctor' | 'physiotherapist' | 'radiologist' | 'admin' | 'inventory_manager'
 export type RoleSwitchPhase = 'idle' | 'out' | 'in'
 
 interface RoleContextType {

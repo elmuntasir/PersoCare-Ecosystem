@@ -264,6 +264,7 @@ export function EmployeesClient({
     "PHYSIOTHERAPIST",
     "RADIOLOGIST",
     "MANAGER",
+    "INVENTORY_MANAGER",
   ];
 
   return (

@@ -13,6 +13,10 @@ import {
   Users,
   Boxes,
   ClipboardList,
+  Droplets,
+  Plus,
+  Activity,
+  History,
 } from "lucide-react";
 import type { DashboardUser } from "@/lib/get-current-dashboard-user";
 
@@ -51,6 +55,14 @@ const NAVS: Record<DashboardUser["primaryRole"]["kind"], NavItem[]> = {
     { href: "/dashboard/organization", label: "Org", icon: Home, match: (pathname) => pathname === "/dashboard/organization" },
     { href: "/dashboard/inventory", label: "Stock", icon: Boxes, match: (pathname) => pathname === "/dashboard/inventory" },
     { href: "/dashboard/organization/employees", label: "Team", icon: Users, match: (pathname) => pathname === "/dashboard/organization/employees" },
+  ],
+  inventory_manager: [
+    { href: "/dashboard/inventory", label: "Stock", icon: Boxes, match: (pathname) => pathname === "/dashboard/inventory" },
+    { href: "/dashboard/inventory/items", label: "Items", icon: ClipboardList, match: (pathname) => pathname === "/dashboard/inventory/items" },
+    { href: "/dashboard/inventory/add-item", label: "Add", icon: Plus, match: (pathname) => pathname === "/dashboard/inventory/add-item" },
+    { href: "/dashboard/inventory/track", label: "Track", icon: Activity, match: (pathname) => pathname === "/dashboard/inventory/track" },
+    { href: "/dashboard/inventory/track/history", label: "History", icon: History, match: (pathname) => pathname === "/dashboard/inventory/track/history" },
+    { href: "/dashboard/inventory/blood-bags", label: "Blood", icon: Droplets, match: (pathname) => pathname === "/dashboard/inventory/blood-bags" },
   ],
   platform_owner: [
     { href: "/platform-admin/applications", label: "Apps", icon: ClipboardList, match: (pathname) => pathname === "/platform-admin/applications" },

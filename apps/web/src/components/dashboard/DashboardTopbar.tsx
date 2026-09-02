@@ -31,6 +31,12 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/organization/admin": "Organization Admin Portal",
   "/admin/employees": "Employee Roster Management",
   "/admin/employees/history": "Governance & Audit Trail",
+  "/dashboard/inventory": "Inventory Dashboard",
+  "/dashboard/inventory/items": "Items",
+  "/dashboard/inventory/add-item": "Add Items",
+  "/dashboard/inventory/track": "Track Items",
+  "/dashboard/inventory/track/history": "Track History",
+  "/dashboard/inventory/blood-bags": "Blood Bags",
 };
 
 export function DashboardTopbar({ user }: { user: DashboardUser }) {

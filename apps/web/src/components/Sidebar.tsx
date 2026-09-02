@@ -27,6 +27,7 @@ import {
   Megaphone,
   Clipboard,
   Activity,
+  History,
 } from 'lucide-react'
 import { FunAvatar } from '@/components/avatar/FunAvatar'
 import { createClient } from '@/utils/supabase/client'
@@ -79,7 +80,21 @@ const roleNavItems: Record<Role, { href: string; label: string; icon: any }[]> =
     { href: '/dashboard/organization/admin/approvals', label: 'Pending Approvals', icon: Clock },
     { href: '/dashboard/organization/admin/approval-history', label: 'Approval History', icon: FileCheck },
     { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
+    { href: '/dashboard/inventory/items', label: 'Items', icon: Clipboard },
+    { href: '/dashboard/inventory/add-item', label: 'Add Items', icon: Package },
+    { href: '/dashboard/inventory/track', label: 'Track Items', icon: Activity },
+    { href: '/dashboard/inventory/track/history', label: 'Track History', icon: History },
     { href: '/dashboard/blood-donation/admin/verifications', label: 'Donor Verifications', icon: Heart },
+    { href: '/dashboard/profile', label: 'Profile', icon: User },
+    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  ],
+  inventory_manager: [
+    { href: '/dashboard/inventory', label: 'Inventory Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/inventory/items', label: 'Items', icon: Clipboard },
+    { href: '/dashboard/inventory/add-item', label: 'Add Items', icon: Package },
+    { href: '/dashboard/inventory/track', label: 'Track Items', icon: Activity },
+    { href: '/dashboard/inventory/track/history', label: 'Track History', icon: History },
+    { href: '/dashboard/inventory/blood-bags', label: 'Blood Bags', icon: Droplet },
     { href: '/dashboard/profile', label: 'Profile', icon: User },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ],
@@ -117,6 +132,7 @@ export function Sidebar() {
     physiotherapist: 'Physiotherapist',
     radiologist: 'Radiologist',
     admin: 'Admin / Org Lead',
+    inventory_manager: 'Inventory Manager',
   }
 
   const renderAvatar = () => {

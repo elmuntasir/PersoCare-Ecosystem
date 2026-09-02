@@ -35,6 +35,7 @@ const ROLES: Array<{ value: SwitchableRole; label: string }> = [
   { value: "physiotherapist", label: "Physiotherapist" },
   { value: "radiologist", label: "Radiologist" },
   { value: "admin", label: "Admin / Org Lead" },
+  { value: "inventory_manager", label: "Inventory Manager" },
 ];
 
 type TabType = "personal" | "health" | "professional";
@@ -64,6 +65,9 @@ export function ProfileClient({ initialData }: ProfileClientProps) {
   const hasVerifiedProfession = (roleCode: SwitchableRole) => {
     if (data.isPlatformOwner) return true;
     if (roleCode === "user") return true;
+    if (roleCode === "inventory_manager") {
+      return (data.inventoryManagerRoles?.length || 0) > 0;
+    }
     if (roleCode === "admin") {
       const hasAdminRole = (data.adminRoles?.length || 0) > 0;
       const hasAdminProfession = data.professions.some(

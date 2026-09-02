@@ -7,7 +7,8 @@ import { BloodRequestCard } from './BloodRequestCard'
 import { DonorCard } from './DonorCard'
 import { CreateRequestModal } from './CreateRequestModal'
 import { DonorRegistrationModal } from './DonorRegistrationModal'
-import { Search, Filter, Plus, Heart, UserPlus, ShieldAlert, Sparkles } from 'lucide-react'
+import { OrganizationBloodSearch } from './OrganizationBloodSearch'
+import { Search, Filter, Plus, Heart, UserPlus, ShieldAlert, Sparkles, Building2 } from 'lucide-react'
 
 interface BloodDonationClientProps {
   initialRequests: any[]
@@ -28,7 +29,7 @@ export function BloodDonationClient({
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDonorModal, setShowDonorModal] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'requests' | 'donors'>('requests')
+  const [activeTab, setActiveTab] = useState<'requests' | 'donors' | 'organizations'>('requests')
 
   const [filters, setFilters] = useState({
     bloodType: '',
@@ -47,7 +48,7 @@ export function BloodDonationClient({
       if (activeTab === 'requests') {
         const data = await searchBloodRequests(fd)
         setRequests(data)
-      } else {
+      } else if (activeTab === 'donors') {
         const data = await searchDonors(fd)
         setDonors(data)
       }
@@ -111,6 +112,17 @@ export function BloodDonationClient({
             <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-mono">
               {donors.length}
             </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('organizations')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'organizations'
+                ? 'bg-white text-[var(--teal-900)] shadow-xs font-semibold'
+                : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-indigo-500" />
+            Hospitals with Blood
           </button>
         </div>
 
@@ -186,7 +198,9 @@ export function BloodDonationClient({
       </div>
 
       {/* Grid Results */}
-      {loading ? (
+      {activeTab === 'organizations' ? (
+        <OrganizationBloodSearch />
+      ) : loading ? (
         <div className="py-16 text-center">
           <div className="w-8 h-8 border-3 border-[var(--teal-700)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="font-body text-sm text-[var(--ink-soft)]">Searching blood registry...</p>

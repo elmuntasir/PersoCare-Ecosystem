@@ -1,58 +1,19 @@
-import { prisma } from '@/lib/prisma'
 import { requireDashboardUser } from '@/lib/get-current-dashboard-user'
+import { resolveInventoryOrganization } from '@/lib/resolve-inventory-org'
 import { getInventoryDashboardData } from '@/lib/inventory'
 import { InventoryDashboard } from '@/components/inventory/InventoryDashboard'
 import { Building2, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Inventory - PersoCare',
+  title: 'Inventory Dashboard - PersoCare',
   description: 'Track inventory stock, blood units, and pharmacy dispenses from one place.',
 }
 
 export default async function InventoryPage() {
-  const user = await requireDashboardUser()
+  await requireDashboardUser()
 
-  const [adminOrg, membershipOrg] = await Promise.all([
-    prisma.organizationAdmin.findFirst({
-      where: { userId: user.id, isActive: true },
-      select: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            organizationType: {
-              select: {
-                name: true,
-                code: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.organizationMembership.findFirst({
-      where: { userId: user.id, status: 'ACTIVE' },
-      select: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            organizationType: {
-              select: {
-                name: true,
-                code: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-  ])
-
-  const organization = adminOrg?.organization ?? membershipOrg?.organization ?? null
+  const organization = await resolveInventoryOrganization()
 
   if (!organization) {
     return (

@@ -58,6 +58,14 @@ export type ProfileData = {
       name: string;
     };
   }>;
+  inventoryManagerRoles: Array<{
+    id: string;
+    organizationId: string;
+    organization: {
+      id: string;
+      name: string;
+    };
+  }>;
   isPlatformOwner?: boolean;
   activeRole: string;
   conditions: Array<{
@@ -102,6 +110,10 @@ export async function getProfileData(): Promise<ProfileData> {
       verification: true,
       adminRoles: {
         where: { isActive: true },
+        include: { organization: true },
+      },
+      employees: {
+        where: { isActive: true, role: "INVENTORY_MANAGER" },
         include: { organization: true },
       },
       professions: {
@@ -172,6 +184,14 @@ export async function getProfileData(): Promise<ProfileData> {
       organization: {
         id: a.organization.id,
         name: a.organization.name,
+      },
+    })),
+    inventoryManagerRoles: profile.employees.map((e) => ({
+      id: e.id,
+      organizationId: e.organizationId,
+      organization: {
+        id: e.organization.id,
+        name: e.organization.name,
       },
     })),
     professions: profile.professions.map((p) => ({

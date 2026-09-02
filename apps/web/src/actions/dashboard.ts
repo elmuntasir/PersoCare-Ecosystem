@@ -4,12 +4,30 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { z } from "zod";
+import { executeProviderChat } from "@/lib/ai/adapters";
+import type { AIProvider } from "@/types/avatar";
 
 const getDashboardSchema = z.object({
   range: z.enum(["day", "week", "month", "year"]).default("week"),
 });
 
 export type DashboardRange = "day" | "week" | "month" | "year";
+
+export type AIHealthInsight = {
+  id: string;
+  title: string;
+  category: "NUTRITION" | "EXERCISE" | "MEDICATION" | "WELLNESS" | "ALERT";
+  summary: string;
+  actionableStep?: string;
+  importance: "HIGH" | "MEDIUM" | "LOW";
+};
+
+export type AIHealthInsightsResponse = {
+  insights: AIHealthInsight[];
+  generatedAt: string;
+  providerUsed: string;
+  hasCustomProviders: boolean;
+};
 
 export type UpcomingItem = {
   id: string;
@@ -116,25 +134,118 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
   // ─── 2. Latest Upcoming Items ───────────────────────────
   const upcomingItems: UpcomingItem[] = [];
 
-  // A. MEDICINE Next Item
-  const medicineRoutine = await prisma.routine.findFirst({
-    where: { userId: user.id, type: "MEDICINE", isActive: true },
-    include: {
-      items: {
-        orderBy: { order: "asc" },
-        include: {
-          completions: {
-            where: {
-              date: {
-                gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                lte: new Date(new Date().setHours(23, 59, 59, 999)),
+  // Fire all independent queries in parallel instead of serially.
+  // These run across a remote (~80ms RTT) Postgres pool, so serializing
+  // ~10 round-trips added multiple seconds to every page navigation.
+  const [
+    medicineRoutine,
+    dietRoutine,
+    exerciseRoutine,
+    nextAppointment,
+    medicineCompletions,
+    foodLogsRange,
+    userFoodLogsRange,
+    activityLogsRange,
+    userExerciseLogsRange,
+    diaryLogsRange,
+  ] = await Promise.all([
+    // A. MEDICINE routine
+    prisma.routine.findFirst({
+      where: { userId: user.id, type: "MEDICINE", isActive: true },
+      include: {
+        items: {
+          orderBy: { order: "asc" },
+          include: {
+            completions: {
+              where: {
+                date: {
+                  gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                  lte: new Date(new Date().setHours(23, 59, 59, 999)),
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    }),
+
+    // B. DIET routine
+    prisma.routine.findFirst({
+      where: { userId: user.id, type: "FOOD" },
+      include: { items: true },
+    }),
+
+    // C. EXERCISE routine
+    prisma.routine.findFirst({
+      where: { userId: user.id, type: "EXERCISE" },
+      include: { items: true },
+    }),
+
+    // 3. Latest Upcoming Appointment
+    prisma.appointment.findFirst({
+      where: {
+        patientId: user.id,
+        status: { in: ["BOOKED", "PENDING"] },
+      },
+      include: {
+        doctors: true,
+        organization: true,
+      },
+      orderBy: { bookedSlotTime: "asc" },
+    }),
+
+    // 4. Infographic data
+    prisma.routineCompletion.findMany({
+      where: {
+        date: { gte: startDate, lte: now },
+        routineItem: {
+          routine: {
+            userId: user.id,
+            type: "MEDICINE",
+          },
+        },
+      },
+      include: {
+        routineItem: true,
+      },
+    }),
+
+    prisma.foodLogEntry.findMany({
+      where: {
+        userId: user.id,
+        loggedAt: { gte: startDate, lte: now },
+      },
+    }),
+
+    prisma.userFoodLog.findMany({
+      where: {
+        userId: user.id,
+        consumedAt: { gte: startDate, lte: now },
+      },
+    }),
+
+    prisma.activityLog.findMany({
+      where: {
+        userId: user.id,
+        type: "EXERCISE",
+        loggedAt: { gte: startDate, lte: now },
+      },
+    }),
+
+    prisma.userExerciseLog.findMany({
+      where: {
+        userId: user.id,
+        loggedAt: { gte: startDate, lte: now },
+      },
+    }),
+
+    prisma.healthDiaryEntry.findMany({
+      where: {
+        userId: user.id,
+        recordedAt: { gte: startDate, lte: now },
+      },
+    }),
+  ]);
 
   let nextMedicineItem: UpcomingItem | null = null;
   for (const item of medicineRoutine?.items || []) {
@@ -188,11 +299,6 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
   if (nextMedicineItem) upcomingItems.push(nextMedicineItem);
 
   // B. DIET Next Item
-  const dietRoutine = await prisma.routine.findFirst({
-    where: { userId: user.id, type: "FOOD" },
-    include: { items: true },
-  });
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dietPayload = (dietRoutine?.items[0]?.payload as any) || {};
   const courses = Array.isArray(dietPayload.courses) && dietPayload.courses.length > 0
@@ -219,11 +325,6 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
   }
 
   // C. EXERCISE Next Item
-  const exerciseRoutine = await prisma.routine.findFirst({
-    where: { userId: user.id, type: "EXERCISE" },
-    include: { items: true },
-  });
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const exPayload = (exerciseRoutine?.items[0]?.payload as any) || {};
   const sessions = Array.isArray(exPayload.sessions) && exPayload.sessions.length > 0
@@ -250,19 +351,6 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
   }
 
   // ─── 3. Latest Upcoming Appointment ─────────────────────
-  // Look for any upcoming or existing booked/pending appointment
-  const nextAppointment = await prisma.appointment.findFirst({
-    where: {
-      patientId: user.id,
-      status: { in: ["BOOKED", "PENDING"] },
-    },
-    include: {
-      doctors: true,
-      organization: true,
-    },
-    orderBy: { bookedSlotTime: "asc" },
-  });
-
   let appointmentData: AppointmentData | null = null;
   if (nextAppointment) {
     let doctorName = "Assigned Specialist";
@@ -296,21 +384,6 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
   const allCompletions: UnifiedActivityEntry[] = [];
 
   // Medicine completions
-  const medicineCompletions = await prisma.routineCompletion.findMany({
-    where: {
-      date: { gte: startDate, lte: now },
-      routineItem: {
-        routine: {
-          userId: user.id,
-          type: "MEDICINE",
-        },
-      },
-    },
-    include: {
-      routineItem: true,
-    },
-  });
-
   for (const mc of medicineCompletions) {
     const dStr = mc.date.toISOString().split("T")[0];
     let status: "DONE" | "LATE" | "MISSED" = "DONE";
@@ -325,37 +398,41 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
     allCompletions.push({ date: dStr, status });
   }
 
-  // Diet completions
+  // Diet completions from Routine payload
   for (const comp of dietCompletions) {
     if (!comp.date || comp.date < startStr || comp.date > endStr) continue;
     allCompletions.push({ date: comp.date, status: "DONE" });
   }
 
-  const foodLogsRange = await prisma.foodLogEntry.findMany({
-    where: {
-      userId: user.id,
-      loggedAt: { gte: startDate, lte: now },
-    },
-  });
+  // FoodLogEntry records
   for (const fl of foodLogsRange) {
     allCompletions.push({ date: fl.loggedAt.toISOString().split("T")[0], status: "DONE" });
   }
 
-  // Exercise completions
+  // UserFoodLog records
+  for (const ufl of userFoodLogsRange) {
+    allCompletions.push({ date: ufl.consumedAt.toISOString().split("T")[0], status: "DONE" });
+  }
+
+  // Exercise completions from Routine payload
   for (const comp of exCompletions) {
     if (!comp.date || comp.date < startStr || comp.date > endStr) continue;
     allCompletions.push({ date: comp.date, status: "DONE" });
   }
 
-  const activityLogsRange = await prisma.activityLog.findMany({
-    where: {
-      userId: user.id,
-      type: "EXERCISE",
-      loggedAt: { gte: startDate, lte: now },
-    },
-  });
+  // ActivityLog records
   for (const al of activityLogsRange) {
     allCompletions.push({ date: al.loggedAt.toISOString().split("T")[0], status: "DONE" });
+  }
+
+  // UserExerciseLog records
+  for (const uel of userExerciseLogsRange) {
+    allCompletions.push({ date: uel.loggedAt.toISOString().split("T")[0], status: "DONE" });
+  }
+
+  // HealthDiaryEntry records
+  for (const dl of diaryLogsRange) {
+    allCompletions.push({ date: dl.recordedAt.toISOString().split("T")[0], status: "DONE" });
   }
 
   const total = allCompletions.length;
@@ -393,5 +470,239 @@ export async function getDashboardData(formData: FormData): Promise<DashboardDat
       missed,
       chartData,
     },
+  };
+}
+
+export async function getAIHealthInsights(rawProvidersJson?: string): Promise<AIHealthInsightsResponse> {
+  const user = await getAuthUser();
+  if (!user) throw new Error("Unauthorized");
+
+  let clientProviders: AIProvider[] = [];
+  if (rawProvidersJson) {
+    try {
+      clientProviders = JSON.parse(rawProvidersJson);
+    } catch {
+      clientProviders = [];
+    }
+  }
+
+  // 1. Fetch user health signals and telemetry
+  const profile = await prisma.patientProfile.findUnique({
+    where: { userId: user.id },
+  });
+
+  const recentFoods = await prisma.userFoodLog.findMany({
+    where: { userId: user.id },
+    include: { user: false },
+    orderBy: { consumedAt: "desc" },
+    take: 6,
+  });
+
+  const recentFoodEntries = await prisma.foodLogEntry.findMany({
+    where: { userId: user.id },
+    include: { food: true },
+    orderBy: { loggedAt: "desc" },
+    take: 6,
+  });
+
+  const recentExercises = await prisma.userExerciseLog.findMany({
+    where: { userId: user.id },
+    orderBy: { loggedAt: "desc" },
+    take: 6,
+  });
+
+  const recentDiaries = await prisma.healthDiaryEntry.findMany({
+    where: { userId: user.id },
+    orderBy: { recordedAt: "desc" },
+    take: 5,
+  });
+
+  const recentMetabolic = await prisma.metabolicRiskAssessment.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const activePrescriptions = await prisma.prescription.findMany({
+    where: { patientId: user.id },
+    include: { medicines: true },
+    take: 3,
+  });
+
+  // 2. Select AI Provider
+  const candidateProviders: AIProvider[] = clientProviders.filter((p) => p.enabled && !p.rateLimited);
+
+  if (candidateProviders.length === 0) {
+    if (process.env.GROQ_API_KEY) {
+      candidateProviders.push({
+        id: "env-groq",
+        name: "Groq LLaMA",
+        icon: "/images/avatars/providers/groq.png",
+        model: "llama-3.3-70b-versatile",
+        apiKey: process.env.GROQ_API_KEY,
+        providerKey: "groq",
+        enabled: true,
+      });
+    }
+    if (process.env.GEMINI_API_KEY) {
+      candidateProviders.push({
+        id: "env-gemini",
+        name: "Google Gemini",
+        icon: "/images/avatars/providers/google.png",
+        model: "gemini-1.5-flash",
+        apiKey: process.env.GEMINI_API_KEY,
+        providerKey: "google",
+        enabled: true,
+      });
+    }
+    if (process.env.OPENAI_API_KEY) {
+      candidateProviders.push({
+        id: "env-openai",
+        name: "OpenAI GPT",
+        icon: "/images/avatars/providers/openai.png",
+        model: "gpt-4o-mini",
+        apiKey: process.env.OPENAI_API_KEY,
+        providerKey: "openai",
+        enabled: true,
+      });
+    }
+  }
+
+  const userHealthSummary = {
+    userName: user.name,
+    gender: user.gender,
+    allergies: profile?.allergies || [],
+    dietaryRestrictions: profile?.dietaryRestrictions || [],
+    weightKg: profile?.weightKg,
+    heightCm: profile?.heightCm,
+    smokingStatus: profile?.smokingStatus,
+    metabolicRiskTier: recentMetabolic?.tier || "UNKNOWN",
+    recentMealsLoggedCount: recentFoods.length + recentFoodEntries.length,
+    recentMealsSample: recentFoodEntries.map((f) => f.food.foodName).concat(recentFoods.map((f) => f.notes || "Meal")).slice(0, 5),
+    recentWorkouts: recentExercises.map((e) => `${e.exerciseName} (${e.duration}m, ${e.caloriesBurned} kcal)`),
+    recentSymptomsOrMood: recentDiaries.map((d) => ({ mood: d.mood, symptoms: d.symptoms, note: d.note })),
+    activeMedicines: activePrescriptions.flatMap((p) => p.medicines.map((m) => `${m.medicineName} (${m.dosage})`)),
+  };
+
+  let generatedInsights: AIHealthInsight[] = [];
+  let providerUsed = "Internal Health Engine";
+
+  if (candidateProviders.length > 0) {
+    const selectedProvider = candidateProviders[0];
+    providerUsed = selectedProvider.name || selectedProvider.model;
+
+    const systemPrompt = `You are the PersoCare AI Clinical & Wellness Intelligence Engine.
+Analyze the user's real health telemetry and generate 3 to 4 hyper-personalized, actionable health insights.
+
+OUTPUT FORMAT REQUIREMENTS:
+Return ONLY a valid JSON array of objects. Do not include markdown code block backticks, just raw JSON.
+Each object must have the following keys:
+- "id": string (unique slug like "insight-1")
+- "title": string (concise, catchy heading, max 7 words)
+- "category": one of ["NUTRITION", "EXERCISE", "MEDICATION", "WELLNESS", "ALERT"]
+- "summary": string (1-2 sentences explaining the personalized insight based on their specific logged data or gaps)
+- "actionableStep": string (specific, simple recommendation they can do today)
+- "importance": one of ["HIGH", "MEDIUM", "LOW"]
+
+USER HEALTH CONTEXT:
+${JSON.stringify(userHealthSummary, null, 2)}
+`;
+
+    try {
+      const responseText = await executeProviderChat(
+        selectedProvider,
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate current personalized health insights for my dashboard." },
+        ],
+        { temperature: 0.4 }
+      );
+
+      const cleaned = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        generatedInsights = parsed.map((item, idx) => ({
+          id: item.id || `insight-${idx + 1}`,
+          title: item.title || "Health Observation",
+          category: ["NUTRITION", "EXERCISE", "MEDICATION", "WELLNESS", "ALERT"].includes(item.category)
+            ? item.category
+            : "WELLNESS",
+          summary: item.summary || "Smart health routine update.",
+          actionableStep: item.actionableStep,
+          importance: ["HIGH", "MEDIUM", "LOW"].includes(item.importance) ? item.importance : "MEDIUM",
+        }));
+      }
+    } catch (err) {
+      console.error("[getAIHealthInsights] AI generation failed, falling back to heuristic engine:", err);
+    }
+  }
+
+  // Fallback heuristic engine if AI call fails or no API keys configured
+  if (generatedInsights.length === 0) {
+    if (userHealthSummary.recentMealsLoggedCount === 0) {
+      generatedInsights.push({
+        id: "insight-nutrition-log",
+        title: "Log Your Meals for Precision Metrics",
+        category: "NUTRITION",
+        summary: "We haven't detected meal entries this week. Tracking your meals helps calibrate metabolic risk and calorie expenditure.",
+        actionableStep: "Tap Diet Plan or Food Search to quick-log your latest meal.",
+        importance: "MEDIUM",
+      });
+    } else {
+      generatedInsights.push({
+        id: "insight-nutrition-balance",
+        title: "Nutritional Adherence Tracking",
+        category: "NUTRITION",
+        summary: `You have logged ${userHealthSummary.recentMealsLoggedCount} meals recently. Consistent logging improves dietary recommendations.`,
+        actionableStep: "Keep maintaining steady hydration (aim for 2.5L+ daily).",
+        importance: "LOW",
+      });
+    }
+
+    if (userHealthSummary.recentWorkouts.length === 0) {
+      generatedInsights.push({
+        id: "insight-exercise-start",
+        title: "Incorporate Daily Physical Activity",
+        category: "EXERCISE",
+        summary: "No exercise sessions were logged recently. A 20-minute brisk walk enhances cardiovascular circulation and reduces insulin resistance.",
+        actionableStep: "Schedule a 15-20 min light cardio session today.",
+        importance: "MEDIUM",
+      });
+    } else {
+      generatedInsights.push({
+        id: "insight-exercise-active",
+        title: "Great Workout Consistency",
+        category: "EXERCISE",
+        summary: `Active logs found: ${userHealthSummary.recentWorkouts[0]}. Consistent physical routines boost metabolic health.`,
+        actionableStep: "Remember post-workout stretching and protein replenishment.",
+        importance: "LOW",
+      });
+    }
+
+    if (userHealthSummary.activeMedicines.length > 0) {
+      generatedInsights.push({
+        id: "insight-medication-sync",
+        title: "Prescription Schedule Sync",
+        category: "MEDICATION",
+        summary: `You have ${userHealthSummary.activeMedicines.length} active prescribed medications.`,
+        actionableStep: "Ensure doses are taken with the prescribed meal relations.",
+        importance: "HIGH",
+      });
+    } else {
+      generatedInsights.push({
+        id: "insight-wellness-check",
+        title: "Routine Health Check & Diary",
+        category: "WELLNESS",
+        summary: "Recording your daily mood and symptoms in the Health Diary helps detect early wellness patterns.",
+        actionableStep: "Add a quick 30-second symptom check-in today.",
+        importance: "LOW",
+      });
+    }
+  }
+
+  return {
+    insights: generatedInsights,
+    generatedAt: new Date().toISOString(),
+    providerUsed,
+    hasCustomProviders: candidateProviders.length > 0,
   };
 }
